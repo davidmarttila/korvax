@@ -10,6 +10,7 @@ requires-python = ">=3.10"
 dependencies = [
     "equinox>=0.13.2",
     "jax>=0.6.2",
+    "onnx2eqx",
 ]
 
 [project.scripts]
@@ -23,9 +24,25 @@ build-backend = "uv_build"
 cuda12 = [
     "jax[cuda12]>=0.6.2 ; sys_platform == 'linux'",
 ]
-dev = [
-    "pre-commit>=4.3.0",
+cuda13 = [
+    "jax[cuda13]>=0.7.2 ; sys_platform == 'linux'",
 ]
 test = [
     "pytest>=8.4.2",
+    "torchcrepe>=0.0.24",
 ]
+dev = [
+    {include-group = "test"},
+    "click>=8.3.0",
+    "matplotlib>=3.10.7",
+    "onnx>=1.19.1",
+    "onnxscript>=0.5.3",
+    "pre-commit>=4.3.0",
+    "torchvision>=0.23.0",
+]
+
+[tool.uv.dependency-groups]
+cuda13 = {requires-python = ">=3.11"}
+
+[tool.uv.sources]
+onnx2eqx = { git = "ssh://git@github.com/dsuedholt/onnx2eqx.git" }
