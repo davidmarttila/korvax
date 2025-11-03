@@ -1,6 +1,6 @@
 from typing import Any
 import jax.numpy as jnp
-from jaxtyping import Float, Array, ArrayLike, Complex, ScalarLike
+from jaxtyping import Float, Array, ArrayLike, Complex
 import equinox as eqx
 
 from korvax.util import pad_center, frame, get_window

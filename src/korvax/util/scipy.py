@@ -1,6 +1,5 @@
 import scipy
 import jax.numpy as jnp
-from typing import Any
 
 from jaxtyping import Float, Array
 
