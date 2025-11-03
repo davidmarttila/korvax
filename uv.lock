@@ -1092,6 +1092,7 @@ dev = [
     { name = "pesto-pitch" },
     { name = "pre-commit" },
     { name = "pytest" },
+    { name = "torchaudio" },
     { name = "torchcrepe" },
     { name = "torchvision" },
 ]
@@ -1104,6 +1105,7 @@ test = [
     { name = "beartype" },
     { name = "librosa" },
     { name = "pytest" },
+    { name = "torchaudio" },
     { name = "torchcrepe" },
 ]
 
@@ -1127,6 +1129,7 @@ dev = [
     { name = "pesto-pitch", specifier = ">=2.0.1" },
     { name = "pre-commit", specifier = ">=4.3.0" },
     { name = "pytest", specifier = ">=8.4.2" },
+    { name = "torchaudio", specifier = ">=2.8.0" },
     { name = "torchcrepe", specifier = ">=0.0.24" },
     { name = "torchvision", specifier = ">=0.23.0" },
 ]
@@ -1139,6 +1142,7 @@ test = [
     { name = "beartype", specifier = ">=0.22.5" },
     { name = "librosa", specifier = ">=0.11.0" },
     { name = "pytest", specifier = ">=8.4.2" },
+    { name = "torchaudio", specifier = ">=2.8.0" },
     { name = "torchcrepe", specifier = ">=0.0.24" },
 ]
 
