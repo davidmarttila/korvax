@@ -67,14 +67,25 @@ def y_chirp_istft(request):
 @pytest.mark.parametrize("n_fft", [1024, 1025, 2048, 4096])
 @pytest.mark.parametrize("window", ["hann", "blackmanharris"])
 @pytest.mark.parametrize("hop_length", [128, 256, 512])
-def test_istft_reconstruction(y_chirp_istft, n_fft, hop_length, window):
+@pytest.mark.parametrize("center", [True, False])
+def test_istft_reconstruction(y_chirp_istft, n_fft, hop_length, window, center):
     with jax.enable_x64():
         x, sr = y_chirp_istft
         x = jnp.asarray(x, dtype=jnp.float64)
-        S = korvax.stft(x, n_fft=n_fft, hop_length=hop_length, window=window)
-        x_reconstructed = korvax.istft(
-            S, hop_length=hop_length, window=window, n_fft=n_fft, length=len(x)
+        S = korvax.stft(
+            x, n_fft=n_fft, hop_length=hop_length, window=window, center=center
         )
+        x_reconstructed = korvax.istft(
+            S,
+            hop_length=hop_length,
+            window=window,
+            n_fft=n_fft,
+            length=len(x) if center else None,
+            center=center,
+        )
+
+        if not center:
+            x = korvax.util.fix_length(x, x_reconstructed.shape[-1])
 
         # NaN/Inf/-Inf should not happen
         assert jnp.all(jnp.isfinite(x_reconstructed))

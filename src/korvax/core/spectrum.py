@@ -132,8 +132,9 @@ def istft(
         if center:
             win_sumsq = win_sumsq[..., n_fft // 2 :]
         win_sumsq = util.fix_length(win_sumsq, size=expected_length)
-        print(win_sumsq[:3])
-        win_sumsq = jnp.where(win_sumsq < 1e-10, 1.0, win_sumsq)
+        win_sumsq = jnp.where(
+            win_sumsq < jnp.finfo(win_sumsq.dtype).eps, 1.0, win_sumsq
+        )
 
     x *= ifft_window
 
@@ -141,7 +142,6 @@ def istft(
     if center:
         x = x[..., n_fft // 2 :]
 
-    print(x[0:3])
     x = util.fix_length(x, size=expected_length)
 
     return x / win_sumsq
