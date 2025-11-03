@@ -9,6 +9,7 @@ wheels/
 # Virtual environments
 .venv
 
-.idea
+.vscode
+matlab_fns
 
 .python-version

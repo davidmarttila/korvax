@@ -1,0 +1,11 @@
+site_name: Korvax
+site_author: David Marttila
+theme: readthedocs
+
+plugins:
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
