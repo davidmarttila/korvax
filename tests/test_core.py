@@ -22,11 +22,9 @@ def load(infile):
 def test_stft(infile):
     DATA = load(infile)
 
-    # Load the file
-    (x, sr) = librosa.load(Path("tests") / Path(DATA["wavfile"][0]), sr=None, mono=True)
+    x, _ = librosa.load(Path("tests") / Path(DATA["wavfile"][0]), sr=None, mono=True)
 
     if DATA["hann_w"][0, 0] == 0:
-        # Set window to ones, swap back to nfft
         window = "boxcar"
         win_length = None
 
@@ -34,7 +32,6 @@ def test_stft(infile):
         window = "hann"
         win_length = int(DATA["hann_w"][0, 0])
 
-    # Compute the STFT
     k_stft = korvax.stft(
         jnp.asarray(x),
         n_fft=int(DATA["nfft"][0, 0]),
