@@ -5,6 +5,7 @@ import scipy.io
 import jax.numpy as jnp
 import korvax
 import numpy as np
+import jax
 
 data_dir = Path("tests/data/")
 
@@ -55,3 +56,28 @@ def test_stft(infile):
 
     assert jnp.allclose(k_stft.real, l_stft.real, atol=1e-5)
     assert jnp.allclose(k_stft.imag, l_stft.imag, atol=1e-5)
+
+
+@pytest.fixture(scope="module", params=[22050, 44100])
+def y_chirp_istft(request):
+    sr = request.param
+    return (librosa.chirp(fmin=32, fmax=8192, sr=sr, duration=2.0), sr)
+
+
+@pytest.mark.parametrize("n_fft", [1024, 1025, 2048, 4096])
+@pytest.mark.parametrize("window", ["hann", "blackmanharris"])
+@pytest.mark.parametrize("hop_length", [128, 256, 512])
+def test_istft_reconstruction(y_chirp_istft, n_fft, hop_length, window):
+    with jax.enable_x64():
+        x, sr = y_chirp_istft
+        x = jnp.asarray(x, dtype=jnp.float64)
+        S = korvax.stft(x, n_fft=n_fft, hop_length=hop_length, window=window)
+        x_reconstructed = korvax.istft(
+            S, hop_length=hop_length, window=window, n_fft=n_fft, length=len(x)
+        )
+
+        # NaN/Inf/-Inf should not happen
+        assert jnp.all(jnp.isfinite(x_reconstructed))
+
+        # should be almost approximately reconstructed
+        assert jnp.allclose(x, x_reconstructed, atol=1e-6)

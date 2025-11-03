@@ -1,2 +1,2 @@
-from .core import stft as stft, resample as resample
+from .core import stft as stft, istft as istft, resample as resample
 from . import util as util
