@@ -4,11 +4,16 @@ import torchcrepe
 import torch
 import click
 
+
 @click.command()
-@click.argument('model', type=click.Choice(['tiny', 'full']))
-@click.argument('output_dir', type=click.Path(exists=True, dir_okay=True, path_type=Path), default=Path('.'))
+@click.argument("model", type=click.Choice(["tiny", "full"]))
+@click.argument(
+    "output_dir",
+    type=click.Path(exists=True, dir_okay=True, path_type=Path),
+    default=Path("."),
+)
 def export(model, output_dir):
-    torchcrepe.load.model('cpu', model)
+    torchcrepe.load.model("cpu", model)
 
     torch.onnx.export(
         torchcrepe.infer.model,
@@ -18,6 +23,6 @@ def export(model, output_dir):
         dynamo=True,
     )
 
-if __name__ == '__main__':
-    export()
 
+if __name__ == "__main__":
+    export()
