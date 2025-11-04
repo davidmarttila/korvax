@@ -86,3 +86,35 @@ def test_D_weighting():
         expected = librosa.D_weighting(freqs, min_db=None)
         got = korvax.D_weighting(freqs, min_db=None)
     assert jnp.allclose(got, expected)
+
+
+def test_power_to_db():
+    S = np.abs(
+        librosa.stft(librosa.chirp(fmin=32, fmax=8192, sr=22050, duration=2.0))
+    ).astype(np.float32)
+    expected = librosa.power_to_db(S**2, ref=np.max, amin=1e-8, top_db=80.0)
+    got = korvax.power_to_db(S**2, ref=jnp.max, amin=1e-8, top_db=80.0)
+    assert jnp.allclose(got, expected, atol=1e-5)
+
+
+def test_db_to_power():
+    S_db = np.array([-80.0, -40.0, -20.0, 0.0, 20.0, 40.0], dtype=np.float32)
+    expected = librosa.db_to_power(S_db, ref=2.0)
+    got = korvax.db_to_power(S_db, ref=2.0)
+    assert jnp.allclose(got, expected, atol=1e-5)
+
+
+def test_amplitude_to_db():
+    S = np.abs(
+        librosa.stft(librosa.chirp(fmin=32, fmax=8192, sr=22050, duration=2.0))
+    ).astype(np.float32)
+    expected = librosa.amplitude_to_db(S, ref=np.max, amin=1e-8, top_db=80.0)
+    got = korvax.amplitude_to_db(S, ref=jnp.max, amin=1e-8, top_db=80.0)
+    assert jnp.allclose(got, expected, atol=1e-5)
+
+
+def test_db_to_amplitude():
+    S_db = np.array([-80.0, -40.0, -20.0, 0.0, 20.0, 40.0], dtype=np.float32)
+    expected = librosa.db_to_amplitude(S_db, ref=2.0)
+    got = korvax.db_to_amplitude(S_db, ref=2.0)
+    assert jnp.allclose(got, expected, atol=1e-5)

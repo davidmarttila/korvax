@@ -15,5 +15,9 @@ from .core import (
     stft as stft,
     istft as istft,
     resample as resample,
+    amplitude_to_db as amplitude_to_db,
+    db_to_amplitude as db_to_amplitude,
+    power_to_db as power_to_db,
+    db_to_power as db_to_power,
     util as util,
 )

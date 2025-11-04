@@ -1,4 +1,5 @@
-from jaxtyping import Float, ArrayLike, Array
+from collections.abc import Callable
+from jaxtyping import Float, ArrayLike, Array, Inexact
 import jax.numpy as jnp
 
 
@@ -174,3 +175,68 @@ def D_weighting(
         return weights
     else:
         return jnp.maximum(min_db, weights)
+
+
+def power_to_db(
+    S: Inexact[ArrayLike, "*dims"],
+    /,
+    ref: Float[ArrayLike, ""]
+    | Callable[[Float[ArrayLike, "*"]], Float[ArrayLike, ""]] = 1.0,
+    amin: float = 1e-10,
+    top_db: float | None = 80.0,
+) -> Float[Array, "*dims"]:
+    if jnp.issubdtype(jnp.result_type(S), jnp.complexfloating):
+        power = jnp.abs(S)
+    else:
+        power = jnp.asarray(S)
+
+    if callable(ref):
+        ref_value = ref(power)
+    else:
+        ref_value = jnp.abs(ref)
+
+    log_spec = 10.0 * jnp.log10(jnp.maximum(amin, power))
+    log_spec -= 10.0 * jnp.log10(jnp.maximum(amin, ref_value))
+
+    if top_db is not None:
+        log_spec = jnp.maximum(log_spec, log_spec.max() - top_db)
+
+    return log_spec
+
+
+def db_to_power(
+    S_db: Float[ArrayLike, "*dims"],
+    /,
+    ref: Float[ArrayLike, ""] = 1.0,
+) -> Float[Array, "*dims"]:
+    return jnp.asarray(ref) * (10.0 ** (jnp.asarray(S_db) / 10.0))
+
+
+def amplitude_to_db(
+    S: Inexact[ArrayLike, "*dims"],
+    /,
+    ref: Float[ArrayLike, ""]
+    | Callable[[Float[ArrayLike, "*"]], Float[ArrayLike, ""]] = 1.0,
+    amin: float = 1e-8,
+    top_db: float | None = 80.0,
+) -> Float[Array, "*dims"]:
+    if jnp.issubdtype(jnp.result_type(S), jnp.complexfloating):
+        mag = jnp.abs(S)
+    else:
+        mag = jnp.asarray(S)
+    if callable(ref):
+        ref_value = ref(mag)
+    else:
+        ref_value = jnp.abs(ref)
+
+    power = mag**2
+
+    return power_to_db(power, ref=ref_value**2, amin=amin**2, top_db=top_db)  # pyright: ignore[reportArgumentType]
+
+
+def db_to_amplitude(
+    S_db: Float[ArrayLike, "*dims"],
+    /,
+    ref: float = 1.0,
+) -> Float[Array, "*dims"]:
+    return ref * (10.0 ** (jnp.asarray(S_db) / 20.0))

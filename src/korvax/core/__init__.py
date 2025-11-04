@@ -12,6 +12,10 @@ from .convert import (
     B_weighting as B_weighting,
     C_weighting as C_weighting,
     D_weighting as D_weighting,
+    amplitude_to_db as amplitude_to_db,
+    db_to_amplitude as db_to_amplitude,
+    power_to_db as power_to_db,
+    db_to_power as db_to_power,
 )
 from .resample import resample as resample
 from .spectrum import stft as stft, istft as istft
