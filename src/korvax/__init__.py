@@ -1,4 +1,4 @@
-from .core import (
+from .convert import (
     midi_to_hz as midi_to_hz,
     hz_to_midi as hz_to_midi,
     cents_to_hz as cents_to_hz,
@@ -12,12 +12,22 @@ from .core import (
     B_weighting as B_weighting,
     C_weighting as C_weighting,
     D_weighting as D_weighting,
-    stft as stft,
-    istft as istft,
-    resample as resample,
     amplitude_to_db as amplitude_to_db,
     db_to_amplitude as db_to_amplitude,
     power_to_db as power_to_db,
     db_to_power as db_to_power,
-    util as util,
 )
+from .resample import resample as resample
+from .transforms import (
+    stft as stft,
+    istft as istft,
+    mel_filterbank as mel_filterbank,
+    cepstral_coefficients as cepstral_coefficients,
+    spectrogram as spectrogram,
+    mel_spectrogram as mel_spectrogram,
+    to_mel_scale as to_mel_scale,
+    mfcc as mfcc,
+    griffin_lim as griffin_lim,
+)
+
+from . import util as util

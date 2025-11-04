@@ -1,6 +1,6 @@
 import jax
 from jax import lax, numpy as jnp
-from jaxtyping import Float, Array
+from jaxtyping import DTypeLike, Float, Array, ArrayLike, Inexact
 from typing import Any
 
 import scipy
@@ -51,7 +51,10 @@ def overlap_and_add(
 
 
 def pad_center(
-    x: Float[Array, "*channels n_samples"], /, size: int, **pad_kwargs: Any
+    x: Float[Array, "*channels n_samples"],
+    /,
+    size: int,
+    pad_kwargs: dict[str, Any] = dict(),
 ) -> Float[Array, "*channels {size}"]:
     """Pad the input array on both sides to center it in a new array of given size.
 
@@ -97,18 +100,44 @@ def fix_length(
 
 
 def get_window(
-    window: str | float | tuple, Nx: int, fftbins: bool = True
+    window: str | float | tuple,
+    Nx: int,
+    fftbins: bool = True,
+    dtype: DTypeLike | None = None,
 ) -> Float[Array, " {Nx}"]:
     """Return the output of [`scipy.signal.get_window`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.get_window.html) as a JAX array.
 
     Args:
-        window (str | float | tuple): Window specification.
-        Nx (int): Length of the returned window.
-        fftbins (bool, optional): If `True`, return a periodic window for FFT analysis.
+        window: Window specification.
+        Nx: Length of the returned window.
+        fftbins: If `True`, return a periodic window for FFT analysis.
             If `False`, return a symmetric window for filter design. Default: `True`.
+        dtype: Desired data type of the returned array. If none, uses the default JAX
+            floating point type, which might be `float32` or `float64` depending on `jax_enable_x64`.
 
     Returns:
         The window as a JAX array.
     """
     win = scipy.signal.get_window(window, Nx, fftbins=fftbins)
-    return jnp.asarray(win)
+    return jnp.asarray(win, dtype=dtype)
+
+
+def feps(x: Inexact[ArrayLike, "..."]) -> float:
+    return float(jnp.finfo(jnp.result_type(x)).eps)
+
+
+def normalize(
+    x: Inexact[Array, "*dims"],
+    /,
+    ord: float | str | None = None,
+    axis: int | tuple[int, ...] | None = None,
+    threshold: float | None = None,
+) -> Float[Array, "*dims"]:
+    if threshold is None:
+        threshold = feps(x)
+
+    x = jnp.abs(x)
+
+    norm = jnp.linalg.norm(x, ord=ord, axis=axis, keepdims=True)
+    norm = jnp.where(norm < threshold, 1.0, norm)
+    return x / norm  # pyright: ignore[reportOperatorIssue]
