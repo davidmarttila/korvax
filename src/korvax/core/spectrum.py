@@ -5,7 +5,7 @@ import jax.numpy as jnp
 from jaxtyping import Float, Array, ArrayLike, Complex
 import equinox as eqx
 
-from korvax import util
+from . import util
 
 
 def stft(

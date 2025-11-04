@@ -1,4 +1,3 @@
-from . import util as util
 from .core import (
     midi_to_hz as midi_to_hz,
     hz_to_midi as hz_to_midi,
@@ -16,4 +15,5 @@ from .core import (
     stft as stft,
     istft as istft,
     resample as resample,
+    util as util,
 )

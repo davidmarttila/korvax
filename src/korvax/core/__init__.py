@@ -15,3 +15,5 @@ from .convert import (
 )
 from .resample import resample as resample
 from .spectrum import stft as stft, istft as istft
+
+from . import util as util
