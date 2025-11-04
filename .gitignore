@@ -13,3 +13,5 @@ wheels/
 matlab_fns
 
 .python-version
+
+.coverage
