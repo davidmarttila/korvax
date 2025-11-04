@@ -3,6 +3,8 @@ from jax import lax, numpy as jnp
 from jaxtyping import DTypeLike, Float, Array, ArrayLike, Inexact
 from typing import Any
 
+import equinox as eqx
+
 import scipy
 import jax._src.scipy.signal
 
@@ -100,12 +102,12 @@ def fix_length(
 
 
 def get_window(
-    window: str | float | tuple,
-    Nx: int,
+    window: str | float | tuple | Float[ArrayLike, " win_length"],
+    Nx: int | None = None,
     fftbins: bool = True,
     dtype: DTypeLike | None = None,
 ) -> Float[Array, " {Nx}"]:
-    """Return the output of [`scipy.signal.get_window`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.get_window.html) as a JAX array.
+    """Return the passed array, or the output of [`scipy.signal.get_window`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.get_window.html) as a JAX array.
 
     Args:
         window: Window specification.
@@ -118,8 +120,15 @@ def get_window(
     Returns:
         The window as a JAX array.
     """
-    win = scipy.signal.get_window(window, Nx, fftbins=fftbins)
-    return jnp.asarray(win, dtype=dtype)
+    if eqx.is_array(window):
+        win = jnp.asarray(window, dtype=dtype)
+        if Nx is not None:
+            assert len(win) == Nx
+        return win
+    else:
+        assert Nx is not None, "Nx must be specified if window is not an array."
+        win = scipy.signal.get_window(window, Nx, fftbins=fftbins)
+        return jnp.asarray(win, dtype=dtype)
 
 
 def feps(x: Inexact[ArrayLike, "..."]) -> float:

@@ -30,4 +30,5 @@ from .transforms import (
     griffin_lim as griffin_lim,
 )
 
+from . import loss as loss
 from . import util as util

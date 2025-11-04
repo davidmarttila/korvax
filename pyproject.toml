@@ -1,10 +1,10 @@
 [project]
 name = "korvax"
-version = "0.1.0"
+version = "0.0.1"
 description = "Audio DSP and ML with JAX"
 readme = "README.md"
 authors = [{ name = "David Marttila", email = "david.suedholt@gmail.com" }]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = ["equinox>=0.13.2", "jax>=0.6.2", "onnx2eqx"]
 
 [project.scripts]
@@ -14,10 +14,10 @@ korvax = "korvax:main"
 requires = ["uv_build>=0.9.2,<0.10.0"]
 build-backend = "uv_build"
 
+
 [dependency-groups]
-cuda12 = ["jax[cuda12]>=0.6.2 ; sys_platform == 'linux'"]
-cuda13 = ["jax[cuda13]>=0.7.2 ; sys_platform == 'linux'"]
 test = [
+    "auraloss>=0.4.0",
     "beartype>=0.22.5",
     "librosa>=0.11.0",
     "pytest>=8.4.2",
@@ -25,8 +25,10 @@ test = [
     "torchaudio>=2.8.0",
     "torchcrepe>=0.0.24",
 ]
+docs = ["hippogriffe>=0.2.2", "mkdocs>=1.6.1", "mkdocstrings[python]>=0.30.1"]
 dev = [
     { include-group = "test" },
+    { include-group = "docs" },
     "click>=8.3.0",
     "ipykernel>=7.1.0",
     "matplotlib>=3.10.7",
@@ -36,7 +38,6 @@ dev = [
     "pre-commit>=4.3.0",
     "torchvision>=0.23.0",
 ]
-docs = ["hippogriffe>=0.2.2", "mkdocs>=1.6.1", "mkdocstrings[python]>=0.30.1"]
 
 
 [tool.pytest.ini_options]
@@ -47,9 +48,6 @@ ignore = ["F722"]
 
 [tool.basedpyright]
 typeCheckingMode = "standard"
-
-[tool.uv.dependency-groups]
-cuda13 = { requires-python = ">=3.11" }
 
 [tool.uv.sources]
 onnx2eqx = { git = "ssh://git@github.com/dsuedholt/onnx2eqx.git" }

@@ -98,8 +98,8 @@ def mel_frequencies(
 
 
 def A_weighting(
-    frequencies: Float[ArrayLike, "*dims"], /, min_db: float | None = -80.0
-) -> Float[Array, "*dims"]:
+    frequencies: Float[ArrayLike, " n_freqs"], /, min_db: float | None = -80.0
+) -> Float[Array, " n_freqs"]:
     f = jnp.asarray(frequencies) ** 2
     const = jnp.array([12194.217, 20.598997, 107.65265, 737.86223]) ** 2.0
     weights: jnp.ndarray = 2.0 + 20.0 * (
@@ -118,8 +118,8 @@ def A_weighting(
 
 
 def B_weighting(
-    frequencies: Float[ArrayLike, "*dims"], /, min_db: float | None = -80.0
-) -> Float[Array, "*dims"]:
+    frequencies: Float[ArrayLike, " n_freqs"], /, min_db: float | None = -80.0
+) -> Float[Array, " n_freqs"]:
     f = jnp.asarray(frequencies) ** 2
     const = jnp.array([12194.217, 20.598997, 158.48932]) ** 2.0
     weights: jnp.ndarray = 0.17 + 20.0 * (
@@ -137,8 +137,8 @@ def B_weighting(
 
 
 def C_weighting(
-    frequencies: Float[ArrayLike, "*dims"], /, min_db: float | None = -80.0
-) -> Float[Array, "*dims"]:
+    frequencies: Float[ArrayLike, " n_freqs"], /, min_db: float | None = -80.0
+) -> Float[Array, " n_freqs"]:
     f = jnp.asarray(frequencies) ** 2.0
     const = jnp.array([12194.217, 20.598997]) ** 2.0
     weights: jnp.ndarray = 0.062 + 20.0 * (
@@ -155,8 +155,8 @@ def C_weighting(
 
 
 def D_weighting(
-    frequencies: Float[ArrayLike, "*dims"], /, min_db: float | None = -80.0
-) -> Float[Array, "*dims"]:
+    frequencies: Float[ArrayLike, " n_freqs"], /, min_db: float | None = -80.0
+) -> Float[Array, " n_freqs"]:
     f = jnp.asarray(frequencies) ** 2
     const = jnp.array([8.3046305e-3, 1018.7, 1039.6, 3136.5, 3424, 282.7, 1160]) ** 2.0
     weights = 20.0 * (
