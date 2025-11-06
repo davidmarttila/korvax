@@ -154,3 +154,34 @@ def normalize(
     norm = jnp.linalg.norm(x, ord=ord, axis=axis, keepdims=True)
     norm = jnp.where(norm < threshold, 1.0, norm)
     return x / norm  # pyright: ignore[reportOperatorIssue]
+
+
+def autocorrelate(
+    x: Float[ArrayLike, "*dims n_samples"],
+    /,
+    max_size: int | None = None,
+) -> Float[Array, "*dims n_lags"]:
+    """Compute the autocorrelation of the input array along the specified axis.
+
+    Args:
+        x: Input array.
+        max_size: Maximum size of the autocorrelation lags. If `None`, uses the full size.
+        axis: Axis along which to compute the autocorrelation. Default: `-1`.
+
+    Returns:
+        Autocorrelated array.
+    """
+    x = jnp.asarray(x)
+    n_samples = x.shape[-1]
+    if max_size is None:
+        max_size = n_samples
+
+    n_fft = 2 ** (n_samples * 2 - 1).bit_length()
+
+    X_f = jnp.fft.rfft(x, n=n_fft, axis=-1)
+    S_f = jnp.conj(X_f) * X_f
+    acf = jnp.fft.irfft(S_f, n=n_fft, axis=-1)
+
+    slice_obj = [slice(None)] * x.ndim
+    slice_obj[-1] = slice(0, max_size)
+    return acf[tuple(slice_obj)]
