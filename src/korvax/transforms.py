@@ -10,7 +10,6 @@ from jaxtyping import (
     ArrayLike,
     Inexact,
     PRNGKeyArray,
-    Real,
     Complex,
 )
 
@@ -240,7 +239,7 @@ def spectrogram(
     win_length: int | None = None,
     window: str | float | tuple | Float[ArrayLike, " win_length"] = "hann",
     center: bool = True,
-    power: Real[ArrayLike, ""] | None = 2.0,
+    power: float | int = 2.0,
     pad_kwargs: dict[str, Any] = dict(),
 ) -> Inexact[Array, "*channels {n_fft}//2+1 n_frames"]:
     x = stft(
@@ -293,7 +292,7 @@ def mel_spectrogram(
     win_length: int | None = None,
     window: str | float | tuple | Float[ArrayLike, " win_length"] = "hann",
     center: bool = True,
-    power: Float[ArrayLike, ""] | None = 2.0,
+    power: float | int = 2.0,
     pad_kwargs: dict[str, Any] = dict(),
 ) -> Float[Array, "*channels {n_mels} n_frames"]:
     S = spectrogram(
@@ -333,7 +332,7 @@ def mfcc(
     win_length: int | None = None,
     window: str | float | tuple | Float[ArrayLike, " win_length"] = "hann",
     center: bool = True,
-    power: Float[ArrayLike, ""] | None = 2.0,
+    power: float | int = 2.0,
     pad_kwargs: dict[str, Any] = dict(),
 ) -> Float[Array, "*channels {n_mfcc} n_frames"]:
     S = mel_spectrogram(
