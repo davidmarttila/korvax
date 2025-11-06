@@ -1,7 +1,7 @@
 import jax
 from typing import Any, TypeGuard
 from jax import lax, numpy as jnp
-from jaxtyping import DTypeLike, Float, Array, ArrayLike, Inexact
+from jaxtyping import Bool, DTypeLike, Float, Array, ArrayLike, Shaped, Inexact
 
 import numpy as np
 
@@ -157,10 +157,11 @@ def normalize(
 
 
 def autocorrelate(
-    x: Float[ArrayLike, "*dims n_samples"],
+    x: Float[ArrayLike, "..."],
     /,
     max_size: int | None = None,
-) -> Float[Array, "*dims n_lags"]:
+    axis: int = -1,
+) -> Float[Array, "..."]:
     """Compute the autocorrelation of the input array along the specified axis.
 
     Args:
@@ -172,16 +173,71 @@ def autocorrelate(
         Autocorrelated array.
     """
     x = jnp.asarray(x)
+    x = x.swapaxes(-1, axis)
     n_samples = x.shape[-1]
     if max_size is None:
         max_size = n_samples
 
-    n_fft = 2 ** (n_samples * 2 - 1).bit_length()
+    n_fft = 2 ** int(jnp.ceil(jnp.log2(2 * (n_samples - 1))))
 
     X_f = jnp.fft.rfft(x, n=n_fft, axis=-1)
     S_f = jnp.conj(X_f) * X_f
     acf = jnp.fft.irfft(S_f, n=n_fft, axis=-1)
+    return acf[..., :max_size].swapaxes(-1, axis)
 
-    slice_obj = [slice(None)] * x.ndim
-    slice_obj[-1] = slice(0, max_size)
-    return acf[tuple(slice_obj)]
+
+def expand_to(
+    x: Shaped[ArrayLike, "*"], /, ndim: int, axes: int | tuple[int, ...]
+) -> Shaped[Array, "*expanded_shape"]:
+    """Expand the dimensions of an array to a given number of dimensions by adding singleton dimensions at specified axes.
+
+    Args:
+        x: Input array.
+        ndim: Desired number of dimensions after expansion.
+        axes: Axes at which to add singleton dimensions.
+
+    Returns:
+        Expanded array.
+    """
+    x = jnp.asarray(x)
+    shape = [1] * ndim
+    if isinstance(axes, int):
+        shape[axes] = x.shape[0]
+    else:
+        for i, axis in enumerate(axes):
+            shape[axis] = x.shape[i]
+
+    return x.reshape(shape)
+
+
+def parabolic_peak_shifts(
+    x: Float[Array, "*dims"], /, axis: int
+) -> Float[Array, "*dims"]:
+    x = x.swapaxes(-1, axis)
+    left_vals = x[..., :-2]
+    center_vals = x[..., 1:-1]
+    right_vals = x[..., 2:]
+
+    a = right_vals + left_vals - 2 * center_vals
+    b = (right_vals - left_vals) / 2
+
+    shifts = -b / (a + feps(x))
+    shifts = jnp.where(jnp.abs(b) >= jnp.abs(a), 0.0, shifts)
+    shifts = jnp.pad(shifts, [(0, 0)] * (shifts.ndim - 1) + [(1, 1)])
+
+    return shifts.swapaxes(-1, axis)
+
+
+def localmin(x: Float[Array, "*dims"], /, axis: int) -> Bool[Array, "*dims"]:
+    x = x.swapaxes(-1, axis)
+    left_vals = x[..., :-2]
+    center_vals = x[..., 1:-1]
+    right_vals = x[..., 2:]
+
+    is_min = jnp.logical_and(center_vals < left_vals, center_vals <= right_vals)
+
+    is_min = jnp.pad(
+        is_min, [(0, 0)] * (is_min.ndim - 1) + [(1, 1)], constant_values=False
+    )
+
+    return is_min.swapaxes(-1, axis)
