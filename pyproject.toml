@@ -1,7 +1,7 @@
 [project]
 name = "korvax"
 version = "0.0.1"
-description = "Audio DSP and ML with JAX"
+description = "JAX utilities for Audio DSP and ML"
 readme = "README.md"
 authors = [{ name = "David Marttila", email = "david.suedholt@gmail.com" }]
 requires-python = ">=3.11"
