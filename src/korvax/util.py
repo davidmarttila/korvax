@@ -1,12 +1,16 @@
 import jax
+from typing import Any, TypeGuard
 from jax import lax, numpy as jnp
 from jaxtyping import DTypeLike, Float, Array, ArrayLike, Inexact
-from typing import Any
 
-import equinox as eqx
+import numpy as np
 
 import scipy
 import jax._src.scipy.signal
+
+
+def is_array(x: Any) -> TypeGuard[Array | np.ndarray]:
+    return isinstance(x, (jax.Array, np.ndarray))
 
 
 def frame(
@@ -120,7 +124,7 @@ def get_window(
     Returns:
         The window as a JAX array.
     """
-    if eqx.is_array(window):
+    if is_array(window):
         win = jnp.asarray(window, dtype=dtype)
         if Nx is not None:
             assert len(win) == Nx

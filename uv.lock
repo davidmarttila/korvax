@@ -540,21 +540,6 @@ wheels = [
 ]
 
 [[package]]
-name = "equinox"
-version = "0.13.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "jax" },
-    { name = "jaxtyping" },
-    { name = "typing-extensions" },
-    { name = "wadler-lindig" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ae/17/96a3b61a80c63c75974bd84318cee2818a23d60628e77fb6ed00eb623a69/equinox-0.13.2.tar.gz", hash = "sha256:509ad744ff99b7c684d45230d6890f9e78eac1a556d7a06db1eff664a3cac74f", size = 139386, upload-time = "2025-10-09T10:15:39.595Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c6/ce/c3bc53bdda6edb050859939a8e91e206123f96f50906e7ba7c027c6c535f/equinox-0.13.2-py3-none-any.whl", hash = "sha256:bc1ee687e4841945d8b776664403839639a05e2f2c02c1da353ff3386e0e43b0", size = 179235, upload-time = "2025-10-09T10:15:37.991Z" },
-]
-
-[[package]]
 name = "executing"
 version = "2.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -970,12 +955,11 @@ wheels = [
 
 [[package]]
 name = "korvax"
-version = "0.0.1"
+version = "0.0.2"
 source = { editable = "." }
 dependencies = [
-    { name = "equinox" },
     { name = "jax" },
-    { name = "onnx2eqx" },
+    { name = "jaxtyping" },
 ]
 
 [package.dev-dependencies]
@@ -1018,9 +1002,8 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "equinox", specifier = ">=0.13.2" },
     { name = "jax", specifier = ">=0.6.2" },
-    { name = "onnx2eqx", git = "ssh://git@github.com/dsuedholt/onnx2eqx.git" },
+    { name = "jaxtyping", specifier = ">=0.3.3" },
 ]
 
 [package.metadata.requires-dev]
@@ -1809,16 +1792,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/6c/1a/2a94112a39d01a9d1490f5ef3c205d8a17fe1ca27f307b026c40d62d8e9f/onnx_ir-0.1.12.tar.gz", hash = "sha256:742e0bff875d0547724187560b3f441833191c8aa939c05f14176f4892784deb", size = 112699, upload-time = "2025-10-28T23:43:54.129Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c8/36/c4df116f5dcaa82ec7944e5d25624a3811f6603fd190660b0b079ea759fb/onnx_ir-0.1.12-py3-none-any.whl", hash = "sha256:17f86faf8a53b979430bde1bc6022c7a162b0d1534550ddb17a1d37eb993e765", size = 129277, upload-time = "2025-10-28T23:43:52.493Z" },
-]
-
-[[package]]
-name = "onnx2eqx"
-version = "0.1.0"
-source = { git = "ssh://git@github.com/dsuedholt/onnx2eqx.git#4e5cccf801d9d7d35c09aa9d2b03fe65ea7da4d0" }
-dependencies = [
-    { name = "equinox" },
-    { name = "onnx" },
-    { name = "onnx-ir" },
 ]
 
 [[package]]

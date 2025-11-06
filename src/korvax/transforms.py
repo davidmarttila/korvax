@@ -1,7 +1,6 @@
 from typing import Any, Literal
 import math
 import jax
-import equinox as eqx
 import jax.numpy as jnp
 from jaxtyping import (
     DTypeLike,
@@ -57,15 +56,12 @@ def stft(
 
     frames = util.frame(x, frame_length=n_fft, hop_length=hop_length)
 
-    if eqx.is_array(window):
-        fft_window = jnp.asarray(window, dtype=frames.dtype)
-    else:
-        fft_window = util.get_window(
-            window,  # pyright: ignore[reportArgumentType]
-            win_length,
-            fftbins=True,
-            dtype=frames.dtype,
-        )
+    fft_window = util.get_window(
+        window,
+        win_length,
+        fftbins=True,
+        dtype=frames.dtype,
+    )
 
     if len(fft_window) < n_fft:
         fft_window = util.pad_center(fft_window, n_fft)
@@ -136,15 +132,12 @@ def istft(
         expected_length -= n_fft
 
     with jax.ensure_compile_time_eval():
-        if eqx.is_array(window):
-            ifft_window = jnp.asarray(window, dtype=x.dtype)
-        else:
-            ifft_window = util.get_window(
-                window,  # pyright: ignore[reportArgumentType]
-                win_length,
-                fftbins=True,
-                dtype=x.dtype,
-            )
+        ifft_window = util.get_window(
+            window,
+            win_length,
+            fftbins=True,
+            dtype=x.dtype,
+        )
 
         ifft_window = util.pad_center(ifft_window, n_fft)
 
