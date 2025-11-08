@@ -11,5 +11,6 @@ repos:
     rev: v1.1.407
     hooks:
       - id: pyright
-        additional_dependencies: ["librosa", "jax", "equinox", "pytest"]
+        additional_dependencies:
+          ["librosa", "jax", "equinox", "pytest", "dynamax"]
         exclude: (^scripts/.*)|(^tests/.*)

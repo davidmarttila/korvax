@@ -5,8 +5,12 @@ description = "JAX utilities for Audio DSP and ML"
 readme = "README.md"
 authors = [{ name = "David Marttila", email = "david.suedholt@gmail.com" }]
 requires-python = ">=3.11"
-dependencies = ["jax>=0.6.2", "jaxtyping>=0.3.3"]
-
+dependencies = [
+    "dynamax>=1.0.1",
+    "jax>=0.6.2",
+    "jaxtyping>=0.3.3",
+    "tfp-nightly>=0.26.0.dev20251108", # https://github.com/tensorflow/probability/issues/1994#issuecomment-3129033043
+]
 
 [build-system]
 requires = ["uv_build>=0.9.2,<0.10.0"]
