@@ -901,6 +901,19 @@ wheels = [
 ]
 
 [[package]]
+name = "jaxpole"
+version = "0.0.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "jax" },
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/84/c9/da59cfc7b09e6904a4ba405c8380e3ae1ccd438099a109341f68ed75aece/jaxpole-0.0.3.tar.gz", hash = "sha256:31f4537c0985d51a30c5321afc15e64a03a14a3bca39429f1c42de6ca33c471f", size = 9686, upload-time = "2024-06-26T14:40:26.337Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cf/09/9dc60b82c7ea913a836168b178056d47c4d7317c615bc850b9bb1cb0765a/jaxpole-0.0.3-py3-none-any.whl", hash = "sha256:8a25717242b759a8f4c76e87f282ca5f7613165f13fddf949a17c1156416c055", size = 9430, upload-time = "2024-06-26T14:40:24.739Z" },
+]
+
+[[package]]
 name = "jaxtyping"
 version = "0.3.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1082,6 +1095,7 @@ dev = [
     { name = "click" },
     { name = "hippogriffe" },
     { name = "ipykernel" },
+    { name = "jaxpole" },
     { name = "librosa" },
     { name = "matplotlib" },
     { name = "mkdocs" },
@@ -1105,6 +1119,7 @@ docs = [
 test = [
     { name = "auraloss" },
     { name = "beartype" },
+    { name = "jaxpole" },
     { name = "librosa" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -1128,6 +1143,7 @@ dev = [
     { name = "click", specifier = ">=8.3.0" },
     { name = "hippogriffe", specifier = ">=0.2.2" },
     { name = "ipykernel", specifier = ">=7.1.0" },
+    { name = "jaxpole", specifier = ">=0.0.3" },
     { name = "librosa", specifier = ">=0.11.0" },
     { name = "matplotlib", specifier = ">=3.10.7" },
     { name = "mkdocs", specifier = ">=1.6.1" },
@@ -1151,6 +1167,7 @@ docs = [
 test = [
     { name = "auraloss", specifier = ">=0.4.0" },
     { name = "beartype", specifier = ">=0.22.5" },
+    { name = "jaxpole", specifier = ">=0.0.3" },
     { name = "librosa", specifier = ">=0.11.0" },
     { name = "pytest", specifier = ">=8.4.2" },
     { name = "pytest-cov", specifier = ">=7.0.0" },

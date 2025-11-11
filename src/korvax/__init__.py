@@ -33,3 +33,4 @@ from .transforms import (
 from . import loss as loss
 from . import util as util
 from . import pitch as pitch
+from . import filter as filter

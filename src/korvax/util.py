@@ -180,7 +180,8 @@ def autocorrelate(
     if max_size is None:
         max_size = n_samples
 
-    n_fft = 2 ** int(jnp.ceil(jnp.log2(2 * (n_samples - 1))))
+    with jax.ensure_compile_time_eval():
+        n_fft = 2 ** int(jnp.ceil(jnp.log2(2 * (n_samples - 1))))
 
     X_f = jnp.fft.rfft(x, n=n_fft, axis=-1)
     S_f = jnp.conj(X_f) * X_f
