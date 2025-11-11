@@ -8,6 +8,8 @@ import numpy as np
 import scipy
 import jax._src.scipy.signal
 
+from ._typing import _WindowSpec
+
 
 def is_array(x: Any) -> TypeGuard[Array | np.ndarray]:
     return isinstance(x, (jax.Array, np.ndarray))
@@ -106,7 +108,7 @@ def fix_length(
 
 
 def get_window(
-    window: str | float | tuple | Float[ArrayLike, " win_length"],
+    window: _WindowSpec,
     Nx: int | None = None,
     fftbins: bool = True,
     dtype: DTypeLike | None = None,

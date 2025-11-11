@@ -140,6 +140,7 @@ def resample(
     rolloff: float = 0.99,
     resampling_method: str = "sinc_interp_hann",
     beta: float | None = None,
+    scale: bool = False,
 ) -> Float[Array, "*channels new_n_samples"]:
     """Resample a waveform using sinc interpolation.
 
@@ -185,4 +186,9 @@ def resample(
             dtype=x.dtype,
         )
 
-    return _apply_sinc_resample_kernel(x, orig_sr, target_sr, gcd, kernel, width)
+    x = _apply_sinc_resample_kernel(x, orig_sr, target_sr, gcd, kernel, width)
+
+    if scale:
+        x = x / jnp.sqrt((target_sr / orig_sr))
+
+    return x
