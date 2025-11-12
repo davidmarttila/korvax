@@ -7,6 +7,8 @@ import jax.numpy as jnp
 
 from jaxtyping import Float, Array
 
+from jax.experimental import pallas as pl
+
 
 @overload
 def lfilter(
@@ -97,7 +99,7 @@ def time_varying_all_pole(
 ) -> tuple[Float[Array, "... n_samples"], Float[Array, "... order"]]: ...
 
 
-# @jax.custom_vjp
+@jax.custom_vjp
 def time_varying_all_pole(
     x: Float[Array, "... n_samples"],
     a: Float[Array, "... order n_samples"],
@@ -118,24 +120,46 @@ def time_varying_all_pole(
                 f"Initial conditions zi must have length {order}, but got {zi.shape[-1]}"
             )
 
-    def step_fn(carry, inputs):
-        xn, an = inputs
-        # yn = xn - jnp.sum(an * carry, axis=-1)
-        yn = xn - jnp.einsum("bo,bo->b", an, carry)
-        carry = jnp.roll(carry, shift=1, axis=-1)
-        carry = carry.at[:, 0].set(yn)
-        return carry, yn
+    # def step_fn(carry, inputs):
+    #     xn, an = inputs
+    #     yn = xn - lax.dot(carry, an)
+    #     carry = jnp.roll(carry, shift=1, axis=-1)
+    #     carry = carry.at[0].set(yn)
+    #     return carry, yn
+
+    def tvap_pallas(x_ref, a_ref, zi_ref, o_ref):
+        o_ref[:order] = zi_ref[:]
+        o_ref[order:] = x_ref[:]
+
+        def step_fn(i, _):
+            xn = o_ref[i + order]
+            yn = xn - lax.dot(pl.load(o_ref, pl.ds(i, order)), a_ref[i])
+            o_ref[i + order] = yn
+            return None
+
+        lax.fori_loop(0, n_samples, step_fn, None)
 
     in_shape = x.shape
-    x_flat = x.reshape(-1, in_shape[-1]).T
+    x_flat = x.reshape(-1, in_shape[-1])
     zi_flat = zi.reshape(-1, order)
-    a_flat = a.reshape(-1, order, n_samples).transpose(2, 0, 1)
+    a_flat = a.reshape(-1, order, n_samples).transpose(0, 2, 1)
 
-    zi_final, y_flat = lax.scan(step_fn, zi_flat, (x_flat, a_flat))
+    # zi_final, y_flat = jax.vmap(lax.scan, in_axes=(None, 0, (0, 0)))(
+    #     step_fn, zi_flat, (x_flat, a_flat)
+    # )
+    # zi_final, y_flat = jax.vmap(tvap_single_row)(x_flat, a_flat, zi_flat)
+    # y_flat = jax.vmap(tvap_single_row)(x_flat, a_flat, zi_flat)
+    y_flat = jax.vmap(
+        pl.pallas_call(
+            tvap_pallas,
+            out_shape=jax.ShapeDtypeStruct((n_samples + order,), x_flat.dtype),
+            interpret=jax.default_backend() == "cpu",
+        )
+    )(x_flat, a_flat, zi_flat)
 
-    y = y_flat.T.reshape(in_shape)
-    zi_final = zi_final.reshape(x.shape[:-1] + (order,))
-    # zi_final = y[..., -order:]
+    y = y_flat[:, order:].reshape(in_shape)
+    # zi_final = zi_final.reshape(x.shape[:-1] + (order,))
+    zi_final = y[..., -order:]
 
     if return_zi:
         return y, zi_final
@@ -214,4 +238,4 @@ def tvap_bwd(res, grad_y):
     return grad_x, grad_A, grad_zi
 
 
-# time_varying_all_pole.defvjp(tvap_fwd, tvap_bwd)
+time_varying_all_pole.defvjp(tvap_fwd, tvap_bwd)  # pyright: ignore[reportFunctionMemberAccess]
