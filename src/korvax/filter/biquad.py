@@ -16,7 +16,6 @@ def biquad(
     a1: Float[Array, "..."],
     a2: Float[Array, "..."],
     zi: None = None,
-    clamp: bool = True,
 ) -> Float[Array, "... n_samples"]: ...
 
 
@@ -30,7 +29,6 @@ def biquad(
     a1: Float[Array, "..."],
     a2: Float[Array, "..."],
     zi: Float[Array, "... 2"],
-    clamp: bool = True,
 ) -> tuple[Float[Array, "... n_samples"], Float[Array, "... 2"]]: ...
 
 
@@ -43,7 +41,6 @@ def biquad(
     a1: Float[Array, "..."],
     a2: Float[Array, "..."],
     zi: Float[Array, "... 2"] | None = None,
-    clamp: bool = True,
 ) -> (
     tuple[Float[Array, "... n_samples"], Float[Array, "... 2"]]
     | Float[Array, "... n_samples"]
@@ -79,8 +76,6 @@ def biquad(
     y = y_flat.T.reshape(in_shape)
     zi_final = zi_final.reshape(x.shape[:-1] + (2,))
 
-    if clamp:
-        y = y.clip(-1.0, 1.0)
     if return_zi:
         return y, zi_final
     else:
@@ -97,7 +92,6 @@ def time_varying_biquad(
     a1: Float[Array, "... n_samples"],
     a2: Float[Array, "... n_samples"],
     zi: None = None,
-    clamp: bool = True,
 ) -> Float[Array, "... n_samples"]: ...
 
 
@@ -111,7 +105,6 @@ def time_varying_biquad(
     a1: Float[Array, "... n_samples"],
     a2: Float[Array, "... n_samples"],
     zi: Float[Array, "... 4"],
-    clamp: bool = True,
 ) -> tuple[Float[Array, "... n_samples"], Float[Array, "... 4"]]: ...
 
 
@@ -124,7 +117,6 @@ def time_varying_biquad(
     a1: Float[Array, "... n_samples"],
     a2: Float[Array, "... n_samples"],
     zi: Float[Array, "... 4"] | None = None,
-    clamp: bool = True,
 ) -> (
     tuple[Float[Array, "... n_samples"], Float[Array, "... 4"]]
     | Float[Array, "... n_samples"]
@@ -171,9 +163,6 @@ def time_varying_biquad(
     y = y_flat.T.reshape(in_shape)
     zi_final = zi_final.reshape(x.shape[:-1] + (4,))
 
-    if clamp:
-        y = y.clip(-1.0, 1.0)
-
     if return_zi:
         return y, zi_final
     else:
@@ -190,7 +179,6 @@ def sosfilt(
     a1: Float[Array, "... n_sections"],
     a2: Float[Array, "... n_sections"],
     zi: None = None,
-    clamp: bool = True,
 ) -> Float[Array, "... n_samples"]: ...
 
 
@@ -204,7 +192,6 @@ def sosfilt(
     a1: Float[Array, "... n_sections"],
     a2: Float[Array, "... n_sections"],
     zi: Float[Array, "... n_sections 2"],
-    clamp: bool = True,
 ) -> tuple[Float[Array, "... n_samples"], Float[Array, "... n_sections 2"]]: ...
 
 
@@ -217,7 +204,6 @@ def sosfilt(
     a1: Float[Array, "... n_sections"],
     a2: Float[Array, "... n_sections"],
     zi: Float[Array, "... n_sections 2"] | None = None,
-    clamp: bool = True,
 ) -> (
     tuple[Float[Array, "... n_samples"], Float[Array, "... n_sections 2"]]
     | Float[Array, "... n_samples"]
@@ -243,14 +229,10 @@ def sosfilt(
             a1=a1[..., i],
             a2=a2[..., i],
             zi=zi[..., i, :],  # pyright: ignore[reportOptionalSubscript]
-            clamp=False,
         )
         return x_, z_
 
     y, zi = lax.scan(step_fn, x, jnp.arange(n_sections))
-
-    if clamp:
-        y = y.clip(-1.0, 1.0)
 
     if return_zi:
         return y, zi
@@ -268,7 +250,6 @@ def time_varying_sosfilt(
     a1: Float[Array, "... n_sections n_samples"],
     a2: Float[Array, "... n_sections n_samples"],
     zi: None = None,
-    clamp: bool = True,
 ) -> Float[Array, "... n_samples"]: ...
 
 
@@ -282,7 +263,6 @@ def time_varying_sosfilt(
     a1: Float[Array, "... n_sections n_samples"],
     a2: Float[Array, "... n_sections n_samples"],
     zi: Float[Array, "... n_sections 4"],
-    clamp: bool = True,
 ) -> tuple[Float[Array, "... n_samples"], Float[Array, "... n_sections 4"]]: ...
 
 
@@ -295,7 +275,6 @@ def time_varying_sosfilt(
     a1: Float[Array, "... n_sections n_samples"],
     a2: Float[Array, "... n_sections n_samples"],
     zi: Float[Array, "... n_sections 4"] | None = None,
-    clamp: bool = True,
 ) -> (
     tuple[Float[Array, "... n_samples"], Float[Array, "... n_sections 4"]]
     | Float[Array, "... n_samples"]
@@ -321,14 +300,10 @@ def time_varying_sosfilt(
             a1=a1[..., i, :],
             a2=a2[..., i, :],
             zi=zi[..., i, :],  # pyright: ignore[reportOptionalSubscript]
-            clamp=False,
         )
         return x_, z_
 
     y, zi = lax.scan(step_fn, x, jnp.arange(n_sections))
-
-    if clamp:
-        y = y.clip(-1.0, 1.0)
 
     if return_zi:
         return y, zi
