@@ -107,11 +107,11 @@ def main(device, batch_size, order, length, seed, runs, precision):
     jaxpole_time = run_benchmark(partial(block_jax, jaxpole_jit), x, a, zi, runs=runs)
     print(f"JAXPole: {jaxpole_time * 1000:.3f} ms")
 
-    torch_jit = torch.jit.trace(
-        torch_allpole,
-        (a_torch, x_torch),
-    )
-    torch_time = run_benchmark(torch_jit, a_torch, x_torch, runs=runs)
+    # torch_jit = torch.jit.trace(
+    # torch_allpole,
+    # (a_torch, x_torch),
+    # )
+    torch_time = run_benchmark(torch_allpole, a_torch, x_torch, runs=runs)
     print(f"Torch: {torch_time * 1000:.3f} ms")
 
     korvax_grad_jit = jax.jit(jax_grads)

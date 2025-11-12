@@ -93,15 +93,15 @@ def main(device, batch_size, order, length, seed, runs, precision):
 
     korvax_jit = jax.jit(korvax.filter.lfilter, static_argnames=["clamp"])
     korvax_time = run_benchmark(
-        partial(block_jax, korvax_jit), b, a, x, clamp=False, runs=runs
+        partial(block_jax, korvax_jit), x, a=a, b=b, clamp=False, runs=runs
     )
     print(f"Korvax: {korvax_time * 1000:.3f} ms")
 
-    torch_jit = torch.jit.trace(
-        torch_lfilter,
-        (b_torch, a_torch, x_torch),
-    )
-    torch_time = run_benchmark(torch_jit, b_torch, a_torch, x_torch, runs=runs)
+    # torch_jit = torch.jit.trace(
+    #    torch_lfilter,
+    #    (b_torch, a_torch, x_torch),
+    # )
+    torch_time = run_benchmark(torch_lfilter, b_torch, a_torch, x_torch, runs=runs)
     print(f"Torch: {torch_time * 1000:.3f} ms")
 
     if device == "cpu":
