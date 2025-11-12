@@ -1,5 +1,3 @@
-import sys
-
 import pytest
 import jax
 import jax.test_util
@@ -7,6 +5,7 @@ import jax.numpy as jnp
 import numpy as np
 
 
+import torchlpc
 import torch
 from torchaudio.functional import lfilter as torch_lfilter
 import korvax
@@ -103,10 +102,9 @@ def test_time_varying_all_pole_initial_grads_are_zero(a, time):
     grads = jax.grad(
         lambda a: jnp.mean(korvax.filter.time_varying_all_pole(x, a=a) ** 2)
     )(a)
-    assert jnp.count_nonzero(grads[..., (time - 1) :]) == 0
 
-    if time >= 2:
-        assert jnp.count_nonzero(grads[..., : (time - 1)]) > 0
+    for i in range(time):
+        assert jnp.count_nonzero(grads[..., i:, i]) == 0
 
     from korvax.filter import time_varying_all_pole
 
@@ -120,13 +118,9 @@ def test_time_varying_all_pole_initial_grads_are_zero(a, time):
     )
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="only check torchlpc on linux")
-@pytest.mark.parametrize("order", [2, 4, 6])
+@pytest.mark.parametrize("order", [1, 2, 4, 6])
 def test_time_varying_all_pole_against_torchlpc(x, order):
-    import torchlpc  # pyright: ignore[reportMissingImports]
-
-    a = jax.random.normal(jax.random.key(1), x.shape + (order,))
-    a = a.at[..., 0].set(1.0)
+    a = jax.random.normal(jax.random.key(1), x.shape + (order,)) * 0.1
 
     y_korvax = korvax.filter.time_varying_all_pole(
         x, a=a.transpose(0, 2, 1), clamp=False

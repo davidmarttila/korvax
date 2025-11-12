@@ -132,11 +132,8 @@ def time_varying_all_pole(
 
     def step_fn(carry, inputs):
         xn, an = inputs
-        yn = xn + carry[:, 0]
-
-        carry = jnp.roll(carry, shift=-1, axis=1)
-        carry = carry.at[:, -1].set(0)
-        carry = carry - an * yn[:, None]
+        yn = jnp.sum(-an * carry, axis=-1) + xn
+        carry = jnp.concat([yn[:, None], carry[:, :-1]], axis=-1)
         return carry, yn
 
     in_shape = x.shape

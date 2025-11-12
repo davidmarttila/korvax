@@ -2,47 +2,51 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-import scipy
-
 from functools import partial
 
 import torch
-import torchaudio
+import torchlpc
+import jaxpole.filter
 import korvax
 import click
 
 from time import time
 
 
-def torch_lfilter(b, a, x):
-    return torchaudio.functional.lfilter(x, a, b, clamp=False)
+def torch_allpole(a, x):
+    return torchlpc.sample_wise_lpc(x, a)
 
 
 def block_jax(fn, *args, **kwargs):
     return jax.tree.map(lambda x: x.block_until_ready(), fn(*args, **kwargs))
 
 
-def jax_loss_fn(b, a, x):
-    y = korvax.filter.lfilter(x, a=a, b=b, clamp=False)
+def jax_loss_fn(a, x):
+    y = korvax.filter.time_varying_all_pole(x, a=a.transpose(0, 2, 1), clamp=False)
     return jnp.mean(y**2)
 
 
-def jax_grads(b, a, x):
-    grads = jax.grad(jax_loss_fn, argnums=(0, 1))(b, a, x)
+def jaxpole_loss_fn(a, x):
+    zi = jnp.zeros((x.shape[0], a.shape[2]))
+    y = jaxpole.filter.allpole(x, a, zi)
+    return jnp.mean(y**2)
+
+
+def jax_grads(a, x):
+    grads = jax.grad(jax_loss_fn, argnums=(0,))(a, x)
     return grads
 
 
-def torch_loss_fn(b, a, x):
-    y = torch_lfilter(b, a, x)
+def torch_loss_fn(a, x):
+    y = torch_allpole(a, x)
     return torch.mean(y**2)
 
 
-def torch_grads(loss, b, a, x):
-    b = b.requires_grad_(True)
+def torch_grads(loss, a, x):
     a = a.requires_grad_(True)
-    loss = loss(b, a, x)
+    loss = loss(a, x)
     loss.backward()
-    return b.grad, a.grad
+    return a.grad
 
 
 def run_benchmark(func, *args, runs: int = 100, **kwargs):
@@ -64,17 +68,14 @@ def run_benchmark(func, *args, runs: int = 100, **kwargs):
 @click.option("--precision", type=click.Choice(["single", "double"]), default="single")
 def main(device, batch_size, order, length, seed, runs, precision):
     key = jax.random.key(seed)
-    k1, k2, k3 = jax.random.split(key, 3)
+    k1, k2 = jax.random.split(key, 2)
 
     if precision == "double":
         jax.config.update("jax_enable_x64", True)
 
     x = jax.random.normal(key=k1, shape=(batch_size, length))
-    b = jax.random.normal(key=k2, shape=(order + 1,))
-    a = jax.random.normal(key=k3, shape=(order + 1,))
-    a = a.at[0].set((jnp.abs(a[0]) + 0.3).clip(max=1.0))
+    a = jax.random.normal(key=k2, shape=(batch_size, length, order)) * 0.1
 
-    dtype_np = np.float32 if precision == "single" else np.float64
     dtype_torch = torch.float32 if precision == "single" else torch.float64
 
     x_torch = torch.tensor(
@@ -83,43 +84,53 @@ def main(device, batch_size, order, length, seed, runs, precision):
     a_torch = torch.tensor(
         np.array(a), device=device, dtype=dtype_torch, requires_grad=False
     )
-    b_torch = torch.tensor(
-        np.array(b), device=device, dtype=dtype_torch, requires_grad=False
+
+    korvax_jit = jax.jit(korvax.filter.time_varying_all_pole, static_argnames=["clamp"])
+
+    assert ~jnp.any(
+        jnp.isnan(
+            korvax.filter.time_varying_all_pole(x, a=a.transpose(0, 2, 1), clamp=False)
+        )
     )
 
-    x_np = np.array(x, dtype=dtype_np)
-    a_np = np.array(a, dtype=dtype_np)
-    b_np = np.array(b, dtype=dtype_np)
-
-    korvax_jit = jax.jit(korvax.filter.lfilter, static_argnames=["clamp"])
     korvax_time = run_benchmark(
-        partial(block_jax, korvax_jit), b, a, x, clamp=False, runs=runs
+        partial(block_jax, korvax_jit),
+        x,
+        a=a.transpose(0, 2, 1),
+        clamp=False,
+        runs=runs,
     )
     print(f"Korvax: {korvax_time * 1000:.3f} ms")
 
-    torch_jit = torch.jit.trace(
-        torch_lfilter,
-        (b_torch, a_torch, x_torch),
-    )
-    torch_time = run_benchmark(torch_jit, b_torch, a_torch, x_torch, runs=runs)
-    print(f"Torch: {torch_time * 1000:.3f} ms")
+    zi = jnp.zeros((batch_size, order))
+    jaxpole_jit = jax.jit(jaxpole.filter.allpole, static_argnames=[])
+    jaxpole_time = run_benchmark(partial(block_jax, jaxpole_jit), x, a, zi, runs=runs)
+    print(f"JAXPole: {jaxpole_time * 1000:.3f} ms")
 
-    if device == "cpu":
-        scipy_time = run_benchmark(scipy.signal.lfilter, b_np, a_np, x_np, runs=runs)
-        print(f"Scipy: {scipy_time * 1000:.3f} ms")
+    torch_jit = torch.jit.trace(
+        torch_allpole,
+        (a_torch, x_torch),
+    )
+    torch_time = run_benchmark(torch_jit, a_torch, x_torch, runs=runs)
+    print(f"Torch: {torch_time * 1000:.3f} ms")
 
     korvax_grad_jit = jax.jit(jax_grads)
     korvax_grad_time = run_benchmark(
-        partial(block_jax, korvax_grad_jit), b, a, x, runs=runs
+        partial(block_jax, korvax_grad_jit), a, x, runs=runs
     )
     print(f"Korvax grads: {korvax_grad_time * 1000:.3f} ms")
 
-    b_torch.requires_grad_(True)
+    jaxpole_grad_jit = jax.jit(jax.grad(jaxpole_loss_fn))
+    jaxpole_grad_time = run_benchmark(
+        partial(block_jax, jaxpole_grad_jit), a, x, runs=runs
+    )
+    print(f"JAXPole grads: {jaxpole_grad_time * 1000:.3f} ms")
+
     a_torch.requires_grad_(True)
 
-    torch_loss_jit = torch.jit.trace(torch_loss_fn, (b_torch, a_torch, x_torch))
+    torch_loss_jit = torch.jit.trace(torch_loss_fn, (a_torch, x_torch))
     torch_grad_time = run_benchmark(
-        partial(torch_grads, torch_loss_jit), b_torch, a_torch, x_torch, runs=runs
+        partial(torch_grads, torch_loss_jit), a_torch, x_torch, runs=runs
     )
     print(f"Torch grads: {torch_grad_time * 1000:.3f} ms")
 

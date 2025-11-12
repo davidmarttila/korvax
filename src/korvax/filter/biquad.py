@@ -110,9 +110,9 @@ def time_varying_biquad(
     b2: Float[Array, "... n_samples"],
     a1: Float[Array, "... n_samples"],
     a2: Float[Array, "... n_samples"],
-    zi: Float[Array, "... 2"],
+    zi: Float[Array, "... 4"],
     clamp: bool = True,
-) -> tuple[Float[Array, "... n_samples"], Float[Array, "... 2"]]: ...
+) -> tuple[Float[Array, "... n_samples"], Float[Array, "... 4"]]: ...
 
 
 def time_varying_biquad(
@@ -123,35 +123,40 @@ def time_varying_biquad(
     b2: Float[Array, "... n_samples"],
     a1: Float[Array, "... n_samples"],
     a2: Float[Array, "... n_samples"],
-    zi: Float[Array, "... 2"] | None = None,
+    zi: Float[Array, "... 4"] | None = None,
     clamp: bool = True,
 ) -> (
-    tuple[Float[Array, "... n_samples"], Float[Array, "... 2"]]
+    tuple[Float[Array, "... n_samples"], Float[Array, "... 4"]]
     | Float[Array, "... n_samples"]
 ):
     n_samples = x.shape[-1]
 
     if zi is None:
         return_zi = False
-        zi = jnp.zeros(x.shape[:-1] + (2,), dtype=x.dtype)
+        zi = jnp.zeros(x.shape[:-1] + (4,), dtype=x.dtype)
     else:
         return_zi = True
-        if zi.shape[-1] != 2:
+        if zi.shape[-1] != 4:
             raise ValueError(
-                f"Initial conditions zi must have length 2, but got {zi.shape[-1]}"
+                f"Initial conditions zi must have length 4, but got {zi.shape[-1]}"
             )
 
     def step_fn(carry, inputs):
         xn, b0n, b1n, b2n, a1n, a2n = inputs
-        yn = b0n * xn + carry[:, 0]
 
-        c1 = carry[:, 1] + b1n * xn - a1n * yn
-        c2 = b2n * xn - a2n * yn
-        return jnp.stack([c1, c2], axis=-1), yn
+        yn = (
+            b0n * xn
+            + b1n * carry[:, 0]
+            + b2n * carry[:, 1]
+            - a1n * carry[:, 2]
+            - a2n * carry[:, 3]
+        )
+
+        return jnp.stack([xn, carry[:, 0], yn, carry[:, 2]], axis=-1), yn
 
     in_shape = x.shape
     x_flat = x.reshape(-1, in_shape[-1]).T
-    zi_flat = zi.reshape(-1, 2)
+    zi_flat = zi.reshape(-1, 4)
 
     params_flat = (
         b0.reshape(-1, n_samples).T,
@@ -164,7 +169,7 @@ def time_varying_biquad(
     zi_final, y_flat = lax.scan(step_fn, zi_flat, (x_flat, *params_flat))
 
     y = y_flat.T.reshape(in_shape)
-    zi_final = zi_final.reshape(x.shape[:-1] + (2,))
+    zi_final = zi_final.reshape(x.shape[:-1] + (4,))
 
     if clamp:
         y = y.clip(-1.0, 1.0)
@@ -276,9 +281,9 @@ def time_varying_sosfilt(
     b2: Float[Array, "... n_sections n_samples"],
     a1: Float[Array, "... n_sections n_samples"],
     a2: Float[Array, "... n_sections n_samples"],
-    zi: Float[Array, "... n_sections 2"],
+    zi: Float[Array, "... n_sections 4"],
     clamp: bool = True,
-) -> tuple[Float[Array, "... n_samples"], Float[Array, "... n_sections 2"]]: ...
+) -> tuple[Float[Array, "... n_samples"], Float[Array, "... n_sections 4"]]: ...
 
 
 def time_varying_sosfilt(
@@ -289,22 +294,22 @@ def time_varying_sosfilt(
     b2: Float[Array, "... n_sections n_samples"],
     a1: Float[Array, "... n_sections n_samples"],
     a2: Float[Array, "... n_sections n_samples"],
-    zi: Float[Array, "... n_sections 2"] | None = None,
+    zi: Float[Array, "... n_sections 4"] | None = None,
     clamp: bool = True,
 ) -> (
-    tuple[Float[Array, "... n_samples"], Float[Array, "... n_sections 2"]]
+    tuple[Float[Array, "... n_samples"], Float[Array, "... n_sections 4"]]
     | Float[Array, "... n_samples"]
 ):
     n_sections = b0.shape[-2]
 
     if zi is None:
         return_zi = False
-        zi = jnp.zeros(x.shape[:-1] + (n_sections, 2), dtype=x.dtype)
+        zi = jnp.zeros(x.shape[:-1] + (n_sections, 4), dtype=x.dtype)
     else:
         return_zi = True
-        if zi.shape[-1] != 2 or zi.shape[-2] != n_sections:
+        if zi.shape[-1] != 4 or zi.shape[-2] != n_sections:
             raise ValueError(
-                f"Initial conditions zi must have shape (..., {n_sections}, 2), but got {zi.shape}"
+                f"Initial conditions zi must have shape (..., {n_sections}, 4), but got {zi.shape}"
             )
 
     def step_fn(carry, i):
