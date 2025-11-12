@@ -1109,6 +1109,7 @@ dev = [
     { name = "sot-loss" },
     { name = "torchaudio" },
     { name = "torchcrepe" },
+    { name = "torchlpc", marker = "sys_platform == 'linux'" },
     { name = "torchvision" },
 ]
 docs = [
@@ -1126,6 +1127,7 @@ test = [
     { name = "sot-loss" },
     { name = "torchaudio" },
     { name = "torchcrepe" },
+    { name = "torchlpc", marker = "sys_platform == 'linux'" },
 ]
 
 [package.metadata]
@@ -1157,6 +1159,7 @@ dev = [
     { name = "sot-loss", specifier = ">=0.1.3" },
     { name = "torchaudio", specifier = ">=2.8.0" },
     { name = "torchcrepe", specifier = ">=0.0.24" },
+    { name = "torchlpc", marker = "sys_platform == 'linux'", specifier = ">=0.7.2" },
     { name = "torchvision", specifier = ">=0.23.0" },
 ]
 docs = [
@@ -1174,6 +1177,7 @@ test = [
     { name = "sot-loss", specifier = ">=0.1.3" },
     { name = "torchaudio", specifier = ">=2.8.0" },
     { name = "torchcrepe", specifier = ">=0.0.24" },
+    { name = "torchlpc", marker = "sys_platform == 'linux'", specifier = ">=0.7.2" },
 ]
 
 [[package]]
@@ -2920,6 +2924,17 @@ sdist = { url = "https://files.pythonhosted.org/packages/c8/98/0da59205962218ed1
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9b/a9/799d00b9dc7a18bb0ff53fccc187b1d83c690e337d078345c17ec0a1a224/torchcrepe-0.0.24-py3-none-any.whl", hash = "sha256:ec054c23c9d45328f213f93a0131570a3f0e5903e9382792bed95f17a8c36d5a", size = 72326298, upload-time = "2025-05-16T18:41:13.419Z" },
 ]
+
+[[package]]
+name = "torchlpc"
+version = "0.7.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numba" },
+    { name = "numpy" },
+    { name = "torch" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c6/7c/c9771f9cb770b3ec60e71d239a8bdd9cf62f89693f7398535df37f343076/torchlpc-0.7.2.tar.gz", hash = "sha256:260a765645cdf0112d3fcfcebc41d11855ac52264b3185f24068ad873b1b0be3", size = 20625, upload-time = "2025-06-21T10:09:31.602Z" }
 
 [[package]]
 name = "torchvision"

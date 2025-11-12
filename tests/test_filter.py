@@ -1,8 +1,11 @@
+import sys
+
 import pytest
 import jax
 import jax.test_util
 import jax.numpy as jnp
 import numpy as np
+
 
 import torch
 from torchaudio.functional import lfilter as torch_lfilter
@@ -14,7 +17,7 @@ from jaxpole.filter import allpole
 
 @pytest.fixture
 def x():
-    return jax.random.normal(jax.random.key(0), (5, 3, 16000))
+    return jax.random.normal(jax.random.key(0), (5, 1000))
 
 
 @pytest.fixture
@@ -89,12 +92,21 @@ def test_time_varying_all_pole_output(a):
     assert jnp.allclose(y_korvax, y_jaxpole, atol=1e-5)
 
 
-def test_time_varying_all_pole_grads(a):
-    b = 1
+@pytest.mark.parametrize("time", [1, 2, 3])
+def test_time_varying_all_pole_initial_grads_are_zero(a, time):
+    b = 10
 
-    x = jax.random.normal(jax.random.key(0), (b, 1000))
+    x = jax.random.normal(jax.random.key(0), (b, time))
     a = a / a[0]
     a = jnp.tile(a[None, 1:, None], (b, 1, x.shape[-1]))
+
+    grads = jax.grad(
+        lambda a: jnp.mean(korvax.filter.time_varying_all_pole(x, a=a) ** 2)
+    )(a)
+    assert jnp.count_nonzero(grads[..., (time - 1) :]) == 0
+
+    if time >= 2:
+        assert jnp.count_nonzero(grads[..., : (time - 1)]) > 0
 
     from korvax.filter import time_varying_all_pole
 
@@ -106,6 +118,38 @@ def test_time_varying_all_pole_grads(a):
         (x, a),
         order=2,
     )
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="only check torchlpc on linux")
+@pytest.mark.parametrize("order", [2, 4, 6])
+def test_time_varying_all_pole_against_torchlpc(x, order):
+    import torchlpc  # pyright: ignore[reportMissingImports]
+
+    a = jax.random.normal(jax.random.key(1), x.shape + (order,))
+    a = a.at[..., 0].set(1.0)
+
+    y_korvax = korvax.filter.time_varying_all_pole(
+        x, a=a.transpose(0, 2, 1), clamp=False
+    )
+
+    x_torch = torch.tensor(x, dtype=torch.float32)
+    a_torch = torch.tensor(a, dtype=torch.float32, requires_grad=True)
+    y_torch = torchlpc.sample_wise_lpc(x_torch, a_torch)
+
+    assert jnp.allclose(y_korvax, y_torch.detach().numpy(), atol=1e-5)
+
+    korvax_grads = jax.grad(
+        lambda a: jnp.mean(
+            korvax.filter.time_varying_all_pole(x, a=a, clamp=False) ** 2
+        )
+    )(a.transpose(0, 2, 1)).transpose(0, 2, 1)
+
+    (torch.mean(y_torch**2)).backward()
+
+    assert a_torch.grad is not None
+    torch_grads = a_torch.grad.detach().numpy()
+
+    assert jnp.allclose(korvax_grads, torch_grads, atol=1e-5)
 
 
 def test_sosfilt_output(x):
