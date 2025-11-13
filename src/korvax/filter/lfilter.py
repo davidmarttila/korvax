@@ -1,5 +1,6 @@
 from typing import overload
 
+import jax
 import jax.lax as lax
 import jax.numpy as jnp
 
@@ -96,6 +97,7 @@ def time_varying_all_pole(
 ) -> tuple[Float[Array, "... n_samples"], Float[Array, "... order"]]: ...
 
 
+@jax.custom_vjp
 def time_varying_all_pole(
     x: Float[Array, "... n_samples"],
     a: Float[Array, "... order n_samples"],
@@ -136,3 +138,77 @@ def time_varying_all_pole(
         return y, zi_final
     else:
         return y
+
+
+def tvap_fwd(x, a, zi):
+    if zi is None:
+        y = time_varying_all_pole(x, a, zi=None)
+        out = y
+    else:
+        y, zi_out = time_varying_all_pole(x, a, zi)
+        out = (y, zi_out)
+
+    return out, (y, a, zi)
+
+
+def tvap_bwd(res, grad_y):
+    y, a, zi = res
+    *batch_shape, order, n_samples = a.shape
+
+    flipped_a = jnp.flip(a, axis=-2)
+
+    padded_a = jnp.pad(flipped_a, ((0, 0),) * (flipped_a.ndim - 1) + ((0, order + 1),))
+
+    reshaped_a = jnp.reshape(padded_a, (*batch_shape, n_samples + order + 1, order))
+    sliced_a = reshaped_a[..., :-1, :]
+
+    shifted_a = jnp.reshape(sliced_a, (*batch_shape, order, n_samples + order))
+    shifted_a = jnp.flip(shifted_a, axis=-2)
+
+    if zi is None:
+        shifted_a = shifted_a[..., order:]
+        padded_grad_y = grad_y
+    else:
+        padded_grad_y = jnp.pad(grad_y[0], ((0, 0), (order, 0)), mode="constant")
+
+    flipped_padded_grad_y = jnp.flip(padded_grad_y, axis=-1)
+    flipped_shifted_a = jnp.flip(shifted_a, axis=-1).conj()
+
+    flipped_grad_x = time_varying_all_pole(
+        flipped_padded_grad_y, flipped_shifted_a, zi=zi
+    )
+
+    grad_zi = flipped_grad_x[..., -order:] if zi is not None else None
+    flipped_grad_x = flipped_grad_x[..., :-order] if zi is not None else flipped_grad_x
+
+    grad_x = jnp.flip(flipped_grad_x, axis=-1) if zi is not None else flipped_grad_x
+
+    valid_y = y[..., :-1]
+    padded_y = jnp.concatenate(
+        [
+            jnp.flip(zi, axis=-1)
+            if zi is not None
+            else jnp.zeros((*batch_shape, order), dtype=y.dtype),
+            valid_y,
+        ],
+        axis=-1,
+    )
+
+    start_idxs = jnp.arange(padded_y.shape[1] - order + 1)
+    unfolded_y = jax.vmap(
+        lax.dynamic_slice_in_dim, in_axes=(None, 0, None, None), out_axes=-1
+    )(
+        padded_y,
+        start_idxs,
+        order,
+        -1,
+    )
+
+    grad_A = (
+        jnp.flip(unfolded_y, axis=-2).conj()
+        * -jnp.flip(flipped_grad_x, axis=-1)[..., None, :]
+    )
+    return grad_x, grad_A, grad_zi
+
+
+time_varying_all_pole.defvjp(tvap_fwd, tvap_bwd)  # pyright: ignore[reportFunctionMemberAccess]
