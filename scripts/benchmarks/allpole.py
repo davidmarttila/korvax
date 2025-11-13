@@ -123,7 +123,8 @@ def main(device, batch_size, order, length, seed, runs, precision):
 
     a_torch.requires_grad_(True)
 
-    torch_loss_jit = torch.jit.trace(torch_loss_fn, (a_torch, x_torch))
+    # torch_loss_jit = torch.jit.trace(torch_loss_fn, (a_torch, x_torch))
+    torch_loss_jit = torch_loss_fn
     torch_grad_time = run_benchmark(
         partial(torch_grads, torch_loss_jit), a_torch, x_torch, runs=runs
     )
