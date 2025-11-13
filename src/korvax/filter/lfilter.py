@@ -1,6 +1,5 @@
 from typing import overload
 
-import jax
 import jax.lax as lax
 import jax.numpy as jnp
 
@@ -119,20 +118,18 @@ def time_varying_all_pole(
 
     def step_fn(carry, inputs):
         xn, an = inputs
-        yn = xn - jnp.sum(carry * an)
-        carry = jnp.r_[yn, carry[:-1]]
+        yn = xn - jnp.einsum("bo,bo->b", an, carry)
+        carry = jnp.concatenate([yn[:, None], carry[:, :-1]], axis=-1)
         return carry, yn
 
     in_shape = x.shape
-    x_flat = x.reshape(-1, in_shape[-1])
+    x_flat = x.reshape(-1, in_shape[-1]).T
     zi_flat = zi.reshape(-1, order)
-    a_flat = a.reshape(-1, order, n_samples).transpose(0, 2, 1)
+    a_flat = a.reshape(-1, order, n_samples).transpose(2, 0, 1)
 
-    zi_final, y_flat = jax.vmap(lax.scan, in_axes=(None, 0, (0, 0)))(
-        step_fn, zi_flat, (x_flat, a_flat)
-    )
+    zi_final, y_flat = lax.scan(step_fn, zi_flat, (x_flat, a_flat))
 
-    y = y_flat.reshape(in_shape)
+    y = y_flat.T.reshape(in_shape)
     zi_final = zi_final.reshape(x.shape[:-1] + (order,))
 
     if return_zi:
