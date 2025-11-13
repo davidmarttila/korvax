@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [{ name = "David Marttila", email = "david.suedholt@gmail.com" }]
 requires-python = ">=3.11"
 dependencies = [
-    "jax>=0.6.2",
+    "jax>=0.6.2,!=0.8.0",
     "jaxtyping>=0.3.3",
     "dynamax>=1.0.1",
     "tfp-nightly>=0.26.0.dev20251108", # https://github.com/tensorflow/probability/issues/1994#issuecomment-3129033043
