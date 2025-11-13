@@ -73,7 +73,7 @@ def test_lfilter_grads(b, a, x):
 def test_time_varying_all_pole_values(x, order):
     a = jax.random.normal(jax.random.key(1), x.shape + (order,)) * 0.1
 
-    y_korvax = korvax.filter.time_varying_all_pole(x, a=a.transpose(0, 2, 1))
+    y_korvax = jax.vmap(korvax.filter.time_varying_all_pole)(x, a=a)
 
     x_torch = torch.tensor(x, dtype=torch.float32)
     a_torch = torch.tensor(a, dtype=torch.float32, requires_grad=True)
@@ -91,8 +91,8 @@ def test_time_varying_all_pole_grads(x, order):
     y_torch = torchlpc.sample_wise_lpc(x_torch, a_torch)
 
     korvax_grads = jax.grad(
-        lambda a: jnp.mean(korvax.filter.time_varying_all_pole(x, a=a) ** 2)
-    )(a.transpose(0, 2, 1)).transpose(0, 2, 1)
+        lambda a: jnp.mean(jax.vmap(korvax.filter.time_varying_all_pole)(x, a=a) ** 2)
+    )(a)
 
     (torch.mean(y_torch**2)).backward()
 

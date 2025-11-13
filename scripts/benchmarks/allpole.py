@@ -18,11 +18,11 @@ def torch_allpole(a, x):
 
 
 def block_jax(fn, *args, **kwargs):
-    return jax.tree.map(lambda x: x.block_until_ready(), fn(*args, **kwargs))
+    fn(*args, **kwargs).block_until_ready()
 
 
 def jax_loss_fn(a, x):
-    y = korvax.filter.time_varying_all_pole(x, a=a.transpose(0, 2, 1))
+    y = jax.vmap(korvax.filter.time_varying_all_pole)(x, a=a)
     return jnp.mean(y**2)
 
 
@@ -33,7 +33,7 @@ def jaxpole_loss_fn(a, x):
 
 
 def jax_grads(a, x):
-    grads = jax.grad(jax_loss_fn, argnums=(0,))(a, x)
+    grads = jax.grad(jax_loss_fn, argnums=0)(a, x)
     return grads
 
 
@@ -85,16 +85,14 @@ def main(device, batch_size, order, length, seed, runs, precision):
         np.array(a), device=device, dtype=dtype_torch, requires_grad=False
     )
 
-    korvax_jit = jax.jit(korvax.filter.time_varying_all_pole)
+    korvax_jit = jax.jit(jax.vmap(korvax.filter.time_varying_all_pole))
 
-    assert ~jnp.any(
-        jnp.isnan(korvax.filter.time_varying_all_pole(x, a=a.transpose(0, 2, 1)))
-    )
+    assert ~jnp.any(jnp.isnan(jax.vmap(korvax.filter.time_varying_all_pole)(x, a=a)))
 
     korvax_time = run_benchmark(
         partial(block_jax, korvax_jit),
         x,
-        a=a.transpose(0, 2, 1),
+        a=a,
         runs=runs,
     )
     print(f"Korvax: {korvax_time * 1000:.3f} ms")
