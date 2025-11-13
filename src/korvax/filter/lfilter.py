@@ -3,7 +3,6 @@ from typing import overload
 import jax
 import jax.lax as lax
 import jax.numpy as jnp
-from jax.experimental.pallas import mosaic_gpu as plgpu
 
 
 from jaxtyping import Float, Array
@@ -98,7 +97,7 @@ def time_varying_all_pole(
 ) -> tuple[Float[Array, "... n_samples"], Float[Array, "... order"]]: ...
 
 
-# @jax.custom_vjp
+@jax.custom_vjp
 def time_varying_all_pole(
     x: Float[Array, "... n_samples"],
     a: Float[Array, "... n_samples order"],
@@ -118,19 +117,13 @@ def time_varying_all_pole(
                 f"Initial conditions zi must have length {order}, but got {zi.shape[-1]}"
             )
 
-    buf = jax.new_ref(
-        zi,
-        memory_space=plgpu.MemorySpace.SMEM if jax.default_backend() == "gpu" else None,
-    )
-
-    def step(_, inputs):
+    def step(carry, inputs):
         xn, an = inputs
-        yn = xn - jnp.sum(an * buf[:])
-        buf[:] = jnp.roll(buf[:], shift=1)
-        buf[0] = yn
-        return None, yn
+        yn = xn - jnp.sum(an * carry)
+        carry = jnp.roll(carry, shift=1)
+        return carry.at[0].set(yn), yn
 
-    _, y = lax.scan(step, None, (x, a), unroll=order)
+    zi, y = lax.scan(step, zi, (x, a), unroll=8)
 
     if return_zi:
         return y, zi
@@ -204,4 +197,4 @@ def _tvap_bwd(res, grad_y):
     return grad_x, grad_A, grad_zi
 
 
-# time_varying_all_pole.defvjp(_tvap_fwd, _tvap_bwd)  # pyright: ignore[reportFunctionMemberAccess]
+time_varying_all_pole.defvjp(_tvap_fwd, _tvap_bwd)  # pyright: ignore[reportFunctionMemberAccess]
