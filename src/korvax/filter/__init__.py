@@ -1,11 +1,5 @@
-from .lfilter import (
-    lfilter as lfilter,
-    time_varying_all_pole as time_varying_all_pole,
-)
+import jax
+from . import _filter_cpu
+from .allpole import allpole as allpole
 
-from .biquad import (
-    biquad as biquad,
-    time_varying_biquad as time_varying_biquad,
-    sosfilt as sosfilt,
-    time_varying_sosfilt as time_varying_sosfilt,
-)
+jax.ffi.register_ffi_target("allpole", _filter_cpu.allpole_cpu(), platform="cpu")  # pyright: ignore[reportAttributeAccessIssue]

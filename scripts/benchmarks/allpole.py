@@ -22,7 +22,7 @@ def block_jax(fn, *args, **kwargs):
 
 
 def jax_loss_fn(a, x):
-    y = jax.vmap(korvax.filter.time_varying_all_pole)(x, a)
+    y = jax.vmap(korvax.filter.allpole)(x, a)
     return jnp.mean(y**2)
 
 
@@ -85,9 +85,11 @@ def main(device, batch_size, order, length, seed, runs, precision):
         np.array(a), device=device, dtype=dtype_torch, requires_grad=False
     )
 
-    korvax_jit = jax.jit(jax.vmap(korvax.filter.time_varying_all_pole))
+    # korvax_jit = jax.jit(jax.vmap(korvax.filter.allpole))
+    korvax_jit = jax.jit(korvax.filter.allpole)
 
-    korvax_time = run_benchmark(partial(block_jax, korvax_jit), x, a, runs=runs)
+    zi = jnp.zeros((batch_size, order))
+    korvax_time = run_benchmark(partial(block_jax, korvax_jit), x, a, zi, runs=runs)
     print(f"Korvax: {korvax_time * 1000:.3f} ms")
 
     zi = jnp.zeros((batch_size, order))
@@ -116,8 +118,8 @@ def main(device, batch_size, order, length, seed, runs, precision):
 
     a_torch.requires_grad_(True)
 
-    # torch_loss_jit = torch.jit.trace(torch_loss_fn, (a_torch, x_torch))
-    torch_loss_jit = torch_loss_fn
+    torch_loss_jit = torch.jit.trace(torch_loss_fn, (a_torch, x_torch))
+    # torch_loss_jit = torch_loss_fn
     torch_grad_time = run_benchmark(
         partial(torch_grads, torch_loss_jit), a_torch, x_torch, runs=runs
     )
