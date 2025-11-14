@@ -65,9 +65,7 @@ def stft(
     if len(fft_window) < n_fft:
         fft_window = util.pad_center(fft_window, n_fft)
 
-    win_dims = [1] * frames.ndim
-    win_dims[-2] = len(fft_window)
-    fft_window = fft_window.reshape(*win_dims)
+    fft_window = util.expand_to(fft_window, frames.ndim, -2)
 
     return jnp.fft.rfft(frames * fft_window, n=n_fft, axis=-2)
 

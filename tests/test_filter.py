@@ -29,7 +29,7 @@ def b():
 
 
 def test_lfilter_output(b, a, x):
-    y_korvax = korvax_lfilter(x, b=b, a=a)
+    y_korvax = jax.vmap(korvax_lfilter, in_axes=(0, None, None))(x, a, b)
     y_scipy = scipy_lfilter(
         np.array(b, dtype=np.float32),
         np.array(a, dtype=np.float32),
@@ -48,7 +48,9 @@ def test_lfilter_output(b, a, x):
 
 def test_lfilter_grads(b, a, x):
     korvax_grad_fn = jax.grad(
-        lambda b, a, x: jnp.mean(korvax_lfilter(x, a=a, b=b) ** 2),
+        lambda b, a, x: jnp.mean(
+            jax.vmap(korvax_lfilter, in_axes=(0, None, None))(x, a, b) ** 2
+        ),
         argnums=(0, 1),
     )
 
@@ -73,7 +75,7 @@ def test_lfilter_grads(b, a, x):
 def test_time_varying_all_pole_values(x, order):
     a = jax.random.normal(jax.random.key(1), x.shape + (order,)) * 0.1
 
-    y_korvax = jax.vmap(korvax.filter.time_varying_all_pole)(x, a=a)
+    y_korvax = jax.vmap(korvax.filter.time_varying_all_pole)(x, a)
 
     x_torch = torch.tensor(x, dtype=torch.float32)
     a_torch = torch.tensor(a, dtype=torch.float32, requires_grad=True)
@@ -91,7 +93,7 @@ def test_time_varying_all_pole_grads(x, order):
     y_torch = torchlpc.sample_wise_lpc(x_torch, a_torch)
 
     korvax_grads = jax.grad(
-        lambda a: jnp.mean(jax.vmap(korvax.filter.time_varying_all_pole)(x, a=a) ** 2)
+        lambda a: jnp.mean(jax.vmap(korvax.filter.time_varying_all_pole)(x, a) ** 2)
     )(a)
 
     (torch.mean(y_torch**2)).backward()
@@ -109,7 +111,9 @@ def test_sosfilt_output(x):
     a1 = jnp.array([-0.4, 0.4])
     a2 = jnp.array([0.5, -0.2])
 
-    y_korvax = korvax.filter.sosfilt(x, b0=b0, b1=b1, b2=b2, a1=a1, a2=a2)
+    y_korvax = jax.vmap(korvax.filter.sosfilt, in_axes=(0,) + (None,) * 5)(
+        x, b0, b1, b2, a1, a2
+    )
 
     sos = np.array(
         [[0.1, 0.2, 0.3, 1.0, -0.4, 0.5], [0.2, 0.3, -0.1, 1.0, 0.4, -0.2]],
@@ -130,20 +134,11 @@ def test_time_varying_biquad_output(x, clamp):
     b0, b1, b2 = b_[0], b_[1], b_[2]
     a1, a2 = a_[1], a_[2]
 
-    biquad_out = korvax.filter.time_varying_biquad(
-        x,
-        b0=b0,
-        b1=b1,
-        b2=b2,
-        a1=a1,
-        a2=a2,
-    )
+    biquad_out = jax.vmap(
+        korvax.filter.time_varying_biquad, in_axes=(0, None, None, None, None, None)
+    )(x, b0, b1, b2, a1, a2)
 
-    lfilter_out = korvax.filter.lfilter(
-        x,
-        b=b,
-        a=a,
-    )
+    lfilter_out = jax.vmap(korvax.filter.lfilter, in_axes=(0, None, None))(x, a, b)
 
     assert jnp.allclose(biquad_out, lfilter_out, atol=1e-5)
 
@@ -161,14 +156,9 @@ def test_time_varying_sosfilt(x):
     a1_ = jnp.tile(a1[:, None], (1, x.shape[-1]))
     a2_ = jnp.tile(a2[:, None], (1, x.shape[-1]))
 
-    tv_sosfilt_out = korvax.filter.time_varying_sosfilt(
-        x,
-        b0=b0_,
-        b1=b1_,
-        b2=b2_,
-        a1=a1_,
-        a2=a2_,
-    )
+    tv_sosfilt_out = jax.vmap(
+        korvax.filter.time_varying_sosfilt, in_axes=(0, None, None, None, None, None)
+    )(x, b0_, b1_, b2_, a1_, a2_)
 
     sos = np.array(
         [[0.1, 0.2, 0.3, 1.0, -0.4, 0.5], [0.2, 0.3, -0.1, 1.0, 0.4, -0.2]],
@@ -176,14 +166,9 @@ def test_time_varying_sosfilt(x):
     )
     lfilter_out = scipy_sosfilt(sos, np.array(x, dtype=np.float32))
 
-    sosfilt_out = korvax.filter.sosfilt(
-        x,
-        b0=b0,
-        b1=b1,
-        b2=b2,
-        a1=a1,
-        a2=a2,
-    )
+    sosfilt_out = jax.vmap(
+        korvax.filter.sosfilt, in_axes=(0, None, None, None, None, None)
+    )(x, b0, b1, b2, a1, a2)
 
     assert jnp.allclose(tv_sosfilt_out, jnp.array(lfilter_out), atol=1e-5)
     assert jnp.allclose(tv_sosfilt_out, sosfilt_out, atol=1e-5)
