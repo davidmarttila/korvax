@@ -2,7 +2,7 @@ import pytest
 import jax
 import jax.test_util
 import jax.numpy as jnp
-
+import numpy as np
 
 import torchlpc
 import torch
@@ -78,8 +78,8 @@ def test_allpole_values(x, order):
 
     y_korvax = jax.vmap(korvax.filter.allpole)(x, a)
 
-    x_torch = torch.tensor(x, dtype=torch.float32)
-    a_torch = torch.tensor(a, dtype=torch.float32, requires_grad=True)
+    x_torch = torch.tensor(np.array(x), dtype=torch.float32)
+    a_torch = torch.tensor(np.array(a), dtype=torch.float32, requires_grad=True)
     y_torch = torchlpc.sample_wise_lpc(x_torch, a_torch)
 
     assert jnp.allclose(y_korvax, y_torch.detach().numpy(), atol=1e-5)
@@ -89,8 +89,8 @@ def test_allpole_values(x, order):
 def test_allpole_grads(x, order):
     a = jax.random.normal(jax.random.key(1), x.shape + (order,)) * 0.1
 
-    x_torch = torch.tensor(x, dtype=torch.float32)
-    a_torch = torch.tensor(a, dtype=torch.float32, requires_grad=True)
+    x_torch = torch.tensor(np.array(x), dtype=torch.float32)
+    a_torch = torch.tensor(np.array(a), dtype=torch.float32, requires_grad=True)
     y_torch = torchlpc.sample_wise_lpc(x_torch, a_torch)
 
     korvax_grads = jax.grad(

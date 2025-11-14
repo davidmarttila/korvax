@@ -15,3 +15,5 @@ matlab_fns
 .python-version
 
 .coverage
+
+uv.lock

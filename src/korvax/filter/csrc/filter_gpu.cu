@@ -17,7 +17,7 @@ __global__ void allpole_kernel(scalar_t *out,     // [B, T + order]
         return;
 
     // Initialize shared memory with the first 'order' elements
-    sm[i] = padded_y[b * (T + order) + i];
+    sm[i] = out[b * (T + order) + i];
     __syncthreads();
 
     int circular_idx = 0;
@@ -39,7 +39,7 @@ __global__ void allpole_kernel(scalar_t *out,     // [B, T + order]
         if (i == order - 1)
         {
             sm[circular_idx] = v;
-            v = padded_y[b * (T + order) + t + order];
+            v = out[b * (T + order) + t + order];
         }
         __syncthreads();
 
@@ -49,7 +49,7 @@ __global__ void allpole_kernel(scalar_t *out,     // [B, T + order]
 
         if (i == order - 1)
         {
-            padded_y[b * (T + order) + t + order] = sm[circular_idx];
+            out[b * (T + order) + t + order] = sm[circular_idx];
         }
         __syncthreads();
     }
@@ -89,7 +89,7 @@ ffi::Error allpole_impl(cudaStream_t stream,
 
     auto threads_per_block = order;
 
-    std::copy_n(x.typed_data(), B * x_len, out->typed_data());
+    cudaMemcpy(out->typed_data(), x.typed_data(), B * x_len * sizeof(float), cudaMemcpyDeviceToDevice);
     allpole_kernel<float><<<B, threads_per_block, threads_per_block * sizeof(float), stream>>>(out->typed_data(), a.typed_data(), B, x_len - order, order);
     cudaError_t last_error = cudaGetLastError();
     if (last_error != cudaSuccess)

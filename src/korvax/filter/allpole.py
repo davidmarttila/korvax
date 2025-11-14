@@ -10,68 +10,6 @@ from jaxtyping import Float, Array
 
 
 @overload
-def lfilter(
-    x: Float[Array, " n_samples"],
-    a: Float[Array, " n_a"],
-    b: Float[Array, " n_b"],
-    zi: None = None,
-) -> Float[Array, " n_samples"]: ...
-
-
-@overload
-def lfilter(
-    x: Float[Array, " n_samples"],
-    a: Float[Array, " n_a"],
-    b: Float[Array, " n_b"],
-    zi: Float[Array, " order"],
-) -> tuple[Float[Array, " n_samples"], Float[Array, " order"]]: ...
-
-
-def lfilter(
-    x: Float[Array, " n_samples"],
-    a: Float[Array, " n_a"],
-    b: Float[Array, " n_b"],
-    zi: Float[Array, " order"] | None = None,
-) -> (
-    tuple[Float[Array, " n_samples"], Float[Array, " order"]]
-    | Float[Array, " n_samples"]
-):
-    b = b / a[0]
-    a = a / a[0]
-
-    order = max(len(a), len(b)) - 1
-    if zi is None:
-        return_zi = False
-        zi = jnp.zeros((order,), dtype=x.dtype)
-    else:
-        return_zi = True
-        if zi.shape[-1] != order:
-            raise ValueError(
-                f"Initial conditions zi must have length {order}, but got {zi.shape[-1]}"
-            )
-
-    if b.shape[-1] < order + 1:
-        b = jnp.pad(b, ((0, 0), (0, order + 1 - b.shape[-1])))
-    if a.shape[-1] < order + 1:
-        a = jnp.pad(a, ((0, 0), (0, order + 1 - a.shape[-1])))
-
-    def step_fn(carry, xn):
-        yn = b[0] * xn + carry[0]
-
-        carry = jnp.roll(carry, shift=-1)
-        carry = carry.at[-1].set(0)
-        carry = carry + b[1:] * xn - a[1:] * yn
-        return carry, yn
-
-    zi, y = lax.scan(step_fn, zi, x)
-
-    if return_zi:
-        return y, zi
-    else:
-        return y
-
-
-@overload
 def allpole(
     x: Float[Array, " n_samples"],
     a: Float[Array, " n_samples order"],
@@ -105,9 +43,19 @@ def allpole(
     if zi is None:
         zi = jnp.zeros((order,), dtype=x.dtype)
     x = jnp.r_[zi, x]
-    out = jax.ffi.ffi_call(
-        "allpole", jax.ShapeDtypeStruct(x.shape, x.dtype), vmap_method="broadcast_all"
-    )(x, a)
+
+    def _call(target: str):
+        return jax.ffi.ffi_call(
+            target, jax.ShapeDtypeStruct(x.shape, x.dtype), vmap_method="broadcast_all"
+        )
+
+    out = lax.platform_dependent(
+        x,
+        a,
+        default=_call("allpole_cpu"),
+        cpu=_call("allpole_cpu"),
+        cuda=_call("allpole_cuda"),
+    )
 
     if return_zi:
         return out[..., order:], out[..., -order:]

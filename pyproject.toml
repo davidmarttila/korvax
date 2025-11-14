@@ -1,6 +1,6 @@
 [project]
 name = "korvax"
-version = "0.0.2"
+version = "0.1.1"
 description = "JAX utilities for Audio DSP and ML"
 readme = "README.md"
 authors = [{ name = "David Marttila", email = "david.suedholt@gmail.com" }]
@@ -12,6 +12,11 @@ dependencies = [
     "tfp-nightly>=0.26.0.dev20251108", # https://github.com/tensorflow/probability/issues/1994#issuecomment-3129033043
 ]
 
+[project.optional-dependencies]
+cuda12 = ["jax[cuda12] ; sys_platform == 'linux'"]
+cuda13 = ["jax[cuda13] ; sys_platform == 'linux'"]
+
+
 [build-system]
 requires = ["scikit-build-core", "nanobind", "jax"]
 build-backend = "scikit_build_core.build"
@@ -19,13 +24,8 @@ build-backend = "scikit_build_core.build"
 [tool.scikit-build]
 build-dir = "build/"
 editable.rebuild = true
-cmake.args = [
-    "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
-    "-DCMAKE_CXX_COMPILER=g++-15",
-]
+cmake.args = ["-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"]
 
-[tool.uv]
-no-build-isolation = true
 
 [dependency-groups]
 test = [

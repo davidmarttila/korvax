@@ -85,8 +85,7 @@ def main(device, batch_size, order, length, seed, runs, precision):
         np.array(a), device=device, dtype=dtype_torch, requires_grad=False
     )
 
-    # korvax_jit = jax.jit(jax.vmap(korvax.filter.allpole))
-    korvax_jit = jax.jit(korvax.filter.allpole)
+    korvax_jit = jax.jit(jax.vmap(korvax.filter.allpole))
 
     zi = jnp.zeros((batch_size, order))
     korvax_time = run_benchmark(partial(block_jax, korvax_jit), x, a, zi, runs=runs)
