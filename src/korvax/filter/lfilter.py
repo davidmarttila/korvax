@@ -13,8 +13,6 @@ def lfilter(
     a: Float[Array, " n_a"],
     b: Float[Array, " n_b"],
     zi: None = None,
-    /,
-    unroll: int = 8,
 ) -> Float[Array, " n_samples"]: ...
 
 
@@ -24,8 +22,6 @@ def lfilter(
     a: Float[Array, " n_a"],
     b: Float[Array, " n_b"],
     zi: Float[Array, " order"],
-    /,
-    unroll: int = 8,
 ) -> tuple[Float[Array, " n_samples"], Float[Array, " order"]]: ...
 
 
@@ -34,8 +30,6 @@ def lfilter(
     a: Float[Array, " n_a"],
     b: Float[Array, " n_b"],
     zi: Float[Array, " order"] | None = None,
-    /,
-    unroll: int = 8,
 ) -> (
     tuple[Float[Array, " n_samples"], Float[Array, " order"]]
     | Float[Array, " n_samples"]
@@ -67,7 +61,7 @@ def lfilter(
         carry = carry + b[1:] * xn - a[1:] * yn
         return carry, yn
 
-    zi, y = lax.scan(step_fn, zi, x, unroll=unroll)
+    zi, y = lax.scan(step_fn, zi, x)
 
     if return_zi:
         return y, zi

@@ -19,17 +19,23 @@ def torch_lfilter(b, a, x):
 
 
 def block_jax(fn, *args, **kwargs):
-    return jax.tree.map(lambda x: x.block_until_ready(), fn(*args, **kwargs))
+    fn(*args, **kwargs).block_until_ready()
 
 
-def jax_loss_fn(b, a, x):
-    y = korvax.filter.lfilter(x, a=a, b=b, clamp=False)
+def jax_loss_fn(x, a, b):
+    y = jax.vmap(korvax.filter.lfilter, in_axes=(0, None, None))(x, a, b)
     return jnp.mean(y**2)
 
 
 def jax_grads(b, a, x):
-    grads = jax.grad(jax_loss_fn, argnums=(0, 1))(b, a, x)
+    grads = jax.grad(jax_loss_fn, argnums=(1, 2))(x, a, b)
     return grads
+
+
+def block_jax_grads(fn, *args, **kwargs):
+    grads = fn(*args, **kwargs)
+    grads[0].block_until_ready()
+    grads[1].block_until_ready()
 
 
 def torch_loss_fn(b, a, x):
@@ -91,10 +97,8 @@ def main(device, batch_size, order, length, seed, runs, precision):
     a_np = np.array(a, dtype=dtype_np)
     b_np = np.array(b, dtype=dtype_np)
 
-    korvax_jit = jax.jit(korvax.filter.lfilter, static_argnames=["clamp"])
-    korvax_time = run_benchmark(
-        partial(block_jax, korvax_jit), x, a=a, b=b, clamp=False, runs=runs
-    )
+    korvax_jit = jax.jit(jax.vmap(korvax.filter.lfilter, in_axes=(0, None, None)))
+    korvax_time = run_benchmark(partial(block_jax, korvax_jit), x, a, b, runs=runs)
     print(f"Korvax: {korvax_time * 1000:.3f} ms")
 
     # torch_jit = torch.jit.trace(
@@ -110,16 +114,15 @@ def main(device, batch_size, order, length, seed, runs, precision):
 
     korvax_grad_jit = jax.jit(jax_grads)
     korvax_grad_time = run_benchmark(
-        partial(block_jax, korvax_grad_jit), b, a, x, runs=runs
+        partial(block_jax_grads, korvax_grad_jit), b, a, x, runs=runs
     )
     print(f"Korvax grads: {korvax_grad_time * 1000:.3f} ms")
 
     b_torch.requires_grad_(True)
     a_torch.requires_grad_(True)
 
-    torch_loss_jit = torch.jit.trace(torch_loss_fn, (b_torch, a_torch, x_torch))
     torch_grad_time = run_benchmark(
-        partial(torch_grads, torch_loss_jit), b_torch, a_torch, x_torch, runs=runs
+        partial(torch_grads, torch_loss_fn), b_torch, a_torch, x_torch, runs=runs
     )
     print(f"Torch grads: {torch_grad_time * 1000:.3f} ms")
 
