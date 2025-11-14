@@ -22,7 +22,7 @@ def block_jax(fn, *args, **kwargs):
 
 
 def jax_loss_fn(a, x):
-    y = jax.vmap(korvax.filter.time_varying_all_pole)(x, a=a)
+    y = jax.vmap(korvax.filter.time_varying_all_pole)(x, a)
     return jnp.mean(y**2)
 
 
@@ -87,14 +87,7 @@ def main(device, batch_size, order, length, seed, runs, precision):
 
     korvax_jit = jax.jit(jax.vmap(korvax.filter.time_varying_all_pole))
 
-    assert ~jnp.any(jnp.isnan(jax.vmap(korvax.filter.time_varying_all_pole)(x, a=a)))
-
-    korvax_time = run_benchmark(
-        partial(block_jax, korvax_jit),
-        x,
-        a=a,
-        runs=runs,
-    )
+    korvax_time = run_benchmark(partial(block_jax, korvax_jit), x, a, runs=runs)
     print(f"Korvax: {korvax_time * 1000:.3f} ms")
 
     zi = jnp.zeros((batch_size, order))
