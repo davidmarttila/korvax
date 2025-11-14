@@ -96,7 +96,6 @@ def allpole(
     x: Float[Array, " n_samples"],
     a: Float[Array, " n_samples order"],
     zi: Float[Array, " order"] | None = None,
-    *,
     return_zi: bool = False,
 ) -> (
     Float[Array, " n_samples"]
@@ -115,7 +114,7 @@ def allpole(
     return out[..., order:]
 
 
-def allpole_fwd(x, a, zi, return_zi):
+def allpole_fwd(x, a, zi, return_zi=False):
     y, zi_out = allpole(x, a, zi, return_zi=True)
     return (y, zi_out) if return_zi else y, (y, a, zi)
 
