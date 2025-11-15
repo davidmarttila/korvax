@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15...3.30)
+cmake_minimum_required(VERSION 3.30)
 project(${SKBUILD_PROJECT_NAME} LANGUAGES CXX)
 
 option(JAX_FFI_EXAMPLE_ENABLE_CUDA "Enable CUDA support" OFF)
@@ -16,7 +16,7 @@ message(STATUS "CPPFLAGS: $ENV{CPPFLAGS}")
 find_package(OpenMP REQUIRED)
 
 set(CXX_STANDARD 17)
-
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 find_package(nanobind CONFIG REQUIRED)
 

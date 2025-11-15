@@ -33,7 +33,19 @@ void batched_samplewise_allpole(int B, int T, int order,
 {
 #pragma omp parallel for
     for (auto b = 0; b < B; b++)
-        samplewise_allpole<scalar_t>(T, order, a + b * T * order, out + b * (T + order));
+    {
+        auto out_offset = out + b * (T + order) + order;
+        auto a_offset = a + b * T * order;
+        for (int64_t t = 0; t < T; t++)
+        {
+            scalar_t y = out_offset[t];
+            for (int64_t i = 0; i < order; i++)
+            {
+                y -= a_offset[t * order + i] * out_offset[t - i - 1];
+            }
+            out_offset[t] = y;
+        }
+    }
 }
 
 ffi::Error allpole_impl(ffi::Buffer<ffi::F32> x,
@@ -48,7 +60,7 @@ ffi::Error allpole_impl(ffi::Buffer<ffi::F32> x,
     if (x_ndim == 1)
     {
         x_len = static_cast<int>(x.dimensions()[0]);
-        std::copy_n(x.typed_data(), x_len, out->typed_data());
+        std::memcpy(out->typed_data(), x.typed_data(), x_len * sizeof(float));
 
         XLA_CHECK_ARG(a_ndim == 2 && a.dimensions()[0] == x_len - static_cast<int>(a.dimensions()[1]),
                       "Input buffer `a` must have shape [T, order] when input buffer `x` has shape [T + order].");
@@ -65,7 +77,7 @@ ffi::Error allpole_impl(ffi::Buffer<ffi::F32> x,
 
     x_len = static_cast<int>(x.dimensions()[1]);
 
-    std::copy_n(x.typed_data(), B * x_len, out->typed_data());
+    std::memcpy(out->typed_data(), x.typed_data(), B * x_len * sizeof(float));
 
     XLA_CHECK_ARG(a_ndim == 3 && a.dimensions()[0] == B && a.dimensions()[1] == x_len - static_cast<int>(a.dimensions()[2]),
                   "Input buffer `a` must have shape [B, T, order] when input buffer `x` has shape [B, T + order].");

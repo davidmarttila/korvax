@@ -29,16 +29,21 @@ def torch_grad(x, a):
     loss.backward()
 
 
-def run_jax_grad_benchmark(runs, batch_size, length, order, key):
-    key, k1, k2 = jax.random.split(key, 3)
+def jax_make_inputs(batch_size, length, order, key):
+    k1, k2 = jax.random.split(key)
     a = jax.random.normal(key=k1, shape=(batch_size, length, order)) * 0.1
     x = jax.random.normal(key=k2, shape=(batch_size, length))
+    return a.block_until_ready(), x.block_until_ready()
+
+
+def run_jax_grad_benchmark(runs, batch_size, length, order, key):
+    key, subkey = jax.random.split(key, 2)
+    a, x = jax_make_inputs(batch_size, length, order, subkey)
     out = jax_grad(x, a).block_until_ready()  # noqa
     acc = 0
     for _ in range(runs):
-        key, k1, k2 = jax.random.split(key, 3)
-        a = jax.random.normal(key=k1, shape=(batch_size, length, order)) * 0.1
-        x = jax.random.normal(key=k2, shape=(batch_size, length))
+        key, subkey = jax.random.split(key, 2)
+        a, x = jax_make_inputs(batch_size, length, order, subkey)
         start = time()
         out = jax_grad(x, a).block_until_ready()  # noqa
         end = time()
@@ -52,15 +57,13 @@ def jax_value(x, a):
 
 
 def run_jax_benchmark(runs, batch_size, length, order, key):
-    key, k1, k2 = jax.random.split(key, 3)
-    a = jax.random.normal(key=k1, shape=(batch_size, length, order)) * 0.1
-    x = jax.random.normal(key=k2, shape=(batch_size, length))
+    key, subkey = jax.random.split(key, 2)
+    a, x = jax_make_inputs(batch_size, length, order, subkey)
     out = jax_value(x, a).block_until_ready()  # noqa
     acc = 0
     for _ in range(runs):
-        key, k1, k2 = jax.random.split(key, 3)
-        a = jax.random.normal(key=k1, shape=(batch_size, length, order)) * 0.1
-        x = jax.random.normal(key=k2, shape=(batch_size, length))
+        key, subkey = jax.random.split(key, 2)
+        a, x = jax_make_inputs(batch_size, length, order, subkey)
         start = time()
         out = jax_value(x, a).block_until_ready()  # noqa
         end = time()
@@ -72,12 +75,12 @@ def run_torch_benchmark(runs, batch_size, length, order, device):
     a = torch.randn(size=(batch_size, length, order), device=device) * 0.1
     x = torch.randn(size=(batch_size, length), device=device)
     out = sample_wise_lpc(x, a)  # noqa
-    if device == "cuda":
-        torch.cuda.synchronize()
     acc = 0
     for _ in range(runs):
         a = torch.randn(size=(batch_size, length, order), device=device) * 0.1
         x = torch.randn(size=(batch_size, length), device=device)
+        if device == "cuda":
+            torch.cuda.synchronize()
         start = time()
         out = sample_wise_lpc(x, a)  # noqa
         if device == "cuda":
@@ -93,8 +96,7 @@ def run_torch_grad_benchmark(runs, batch_size, length, order, device):
     x = torch.randn(size=(batch_size, length), device=device)
     torch_grad(x, b)
     out = a.grad  # noqa
-    if device == "cuda":
-        torch.cuda.synchronize()
+
     acc = 0
     for _ in range(runs):
         a = torch.randn(
@@ -102,6 +104,8 @@ def run_torch_grad_benchmark(runs, batch_size, length, order, device):
         )
         b = a * 0.1
         x = torch.randn(size=(batch_size, length), device=device)
+        if device == "cuda":
+            torch.cuda.synchronize()
         start = time()
         torch_grad(x, b)
         out = a.grad  # noqa

@@ -91,14 +91,14 @@ def torch_sot_grads(x, y):
 
 def run_jax_benchmark(fn, runs, batch_size, length, key):
     key, k1, k2 = jax.random.split(key, 3)
-    x = jax.random.normal(key=k1, shape=(batch_size, 1, length))
-    y = jax.random.normal(key=k2, shape=(batch_size, 1, length))
+    x = jax.random.normal(key=k1, shape=(batch_size, 1, length)).block_until_ready()
+    y = jax.random.normal(key=k2, shape=(batch_size, 1, length)).block_until_ready()
     out = fn(x, y).block_until_ready()  # noqa
     acc = 0
     for _ in range(runs):
         key, k1, k2 = jax.random.split(key, 3)
-        x = jax.random.normal(key=k1, shape=(batch_size, 1, length))
-        y = jax.random.normal(key=k2, shape=(batch_size, 1, length))
+        x = jax.random.normal(key=k1, shape=(batch_size, 1, length)).block_until_ready()
+        y = jax.random.normal(key=k2, shape=(batch_size, 1, length)).block_until_ready()
         start = time()
         out = fn(x, y).block_until_ready()  # noqa
         end = time()
@@ -110,12 +110,13 @@ def run_torch_benchmark(fn, runs, batch_size, length, device):
     x = torch.randn(size=(batch_size, 1, length), device=device)
     y = torch.randn(size=(batch_size, 1, length), device=device)
     out = fn(x, y)  # noqa
-    if device == "cuda":
-        torch.cuda.synchronize()
+
     acc = 0
     for _ in range(runs):
         x = torch.randn(size=(batch_size, 1, length), device=device)
         y = torch.randn(size=(batch_size, 1, length), device=device)
+        if device == "cuda":
+            torch.cuda.synchronize()
         start = time()
         out = fn(x, y)  # noqa
         if device == "cuda":
@@ -130,12 +131,12 @@ def run_torch_grad_benchmark(fn, runs, batch_size, length, device):
     y = torch.randn(size=(batch_size, 1, length), device=device)
     fn(x, y)
     out = x.grad  # noqa
-    if device == "cuda":
-        torch.cuda.synchronize()
     acc = 0
     for _ in range(runs):
         x = torch.randn(size=(batch_size, 1, length), device=device, requires_grad=True)
         y = torch.randn(size=(batch_size, 1, length), device=device)
+        if device == "cuda":
+            torch.cuda.synchronize()
         start = time()
         fn(x, y)
         out = x.grad  # noqa
