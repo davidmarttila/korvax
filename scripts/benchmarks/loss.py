@@ -1,5 +1,4 @@
 import jax
-import numpy as np
 
 
 from functools import partial
@@ -12,10 +11,6 @@ import click
 from time import time
 
 from sot import Wasserstein1DLoss
-
-
-def block_jax(fn, *args, **kwargs):
-    fn(*args, **kwargs).block_until_ready()
 
 
 @jax.jit
@@ -94,8 +89,61 @@ def torch_sot_grads(x, y):
     return x.grad
 
 
-# this made performance 4x worse!!
-# torch._dynamo.config.compiled_autograd = True
+def run_jax_benchmark(fn, runs, batch_size, length, key):
+    key, k1, k2 = jax.random.split(key, 3)
+    x = jax.random.normal(key=k1, shape=(batch_size, 1, length))
+    y = jax.random.normal(key=k2, shape=(batch_size, 1, length))
+    out = fn(x, y).block_until_ready()  # noqa
+    acc = 0
+    for _ in range(runs):
+        key, k1, k2 = jax.random.split(key, 3)
+        x = jax.random.normal(key=k1, shape=(batch_size, 1, length))
+        y = jax.random.normal(key=k2, shape=(batch_size, 1, length))
+        start = time()
+        out = fn(x, y).block_until_ready()  # noqa
+        end = time()
+        acc += end - start
+    return acc / runs
+
+
+def run_torch_benchmark(fn, runs, batch_size, length, device):
+    x = torch.randn(size=(batch_size, 1, length), device=device)
+    y = torch.randn(size=(batch_size, 1, length), device=device)
+    out = fn(x, y)  # noqa
+    if device == "cuda":
+        torch.cuda.synchronize()
+    acc = 0
+    for _ in range(runs):
+        x = torch.randn(size=(batch_size, 1, length), device=device)
+        y = torch.randn(size=(batch_size, 1, length), device=device)
+        start = time()
+        out = fn(x, y)  # noqa
+        if device == "cuda":
+            torch.cuda.synchronize()
+        end = time()
+        acc += end - start
+    return acc / runs
+
+
+def run_torch_grad_benchmark(fn, runs, batch_size, length, device):
+    x = torch.randn(size=(batch_size, 1, length), device=device, requires_grad=True)
+    y = torch.randn(size=(batch_size, 1, length), device=device)
+    fn(x, y)
+    out = x.grad  # noqa
+    if device == "cuda":
+        torch.cuda.synchronize()
+    acc = 0
+    for _ in range(runs):
+        x = torch.randn(size=(batch_size, 1, length), device=device, requires_grad=True)
+        y = torch.randn(size=(batch_size, 1, length), device=device)
+        start = time()
+        fn(x, y)
+        out = x.grad  # noqa
+        if device == "cuda":
+            torch.cuda.synchronize()
+        end = time()
+        acc += end - start
+    return acc / runs
 
 
 @torch.compile
@@ -120,52 +168,54 @@ def run_benchmark(func, *args, runs: int = 100, **kwargs):
 @click.option("--length", type=int, default=64000)
 @click.option("--seed", type=int, default=0)
 @click.option("--runs", type=int, default=10)
-@click.option("--precision", type=click.Choice(["single", "double"]), default="single")
-def main(device, batch_size, length, seed, runs, precision):
+def main(device, batch_size, length, seed, runs):
     key = jax.random.key(seed)
-    k1, k2 = jax.random.split(key, 2)
-
-    if precision == "double":
-        jax.config.update("jax_enable_x64", True)
-
-    x = jax.random.normal(key=k1, shape=(batch_size, 1, length))
-    y = jax.random.normal(key=k2, shape=(batch_size, 1, length))
-
-    dtype_torch = torch.float32 if precision == "single" else torch.float64
-
-    x_torch = torch.tensor(
-        np.array(x), device=device, dtype=dtype_torch, requires_grad=False
+    key, subkey = jax.random.split(key)
+    korvax_time = run_jax_benchmark(
+        jax_mrstft, batch_size=batch_size, length=length, key=subkey, runs=runs
     )
-    y_torch = torch.tensor(
-        np.array(y), device=device, dtype=dtype_torch, requires_grad=False
-    )
-
-    korvax_time = run_benchmark(partial(block_jax, jax_mrstft), x, y, runs=runs)
     print(f"Korvax MRSTFT: {korvax_time * 1000:.3f} ms")
 
-    torch_time = run_benchmark(torch_mrstft, x_torch, y_torch, runs=runs)
+    torch_time = run_torch_benchmark(
+        torch_mrstft, batch_size=batch_size, length=length, device=device, runs=runs
+    )
     print(f"Torch MRSTFT: {torch_time * 1000:.3f} ms")
 
-    korvax_grad_time = run_benchmark(
-        partial(block_jax, jax_mrstft_grads), x, y, runs=runs
+    key, subkey = jax.random.split(key)
+    korvax_grad_time = run_jax_benchmark(
+        jax_mrstft_grads, batch_size=batch_size, length=length, key=subkey, runs=runs
     )
     print(f"Korvax MRSTFT grads: {korvax_grad_time * 1000:.3f} ms")
-    x_torch = x_torch.requires_grad_(True)
 
-    torch_grad_time = run_benchmark(torch_mrstft_grads, x_torch, y_torch, runs=runs)
+    torch_grad_time = run_torch_grad_benchmark(
+        torch_mrstft_grads,
+        batch_size=batch_size,
+        length=length,
+        device=device,
+        runs=runs,
+    )
     print(f"Torch MRSTFT grads: {torch_grad_time * 1000:.3f} ms")
 
-    korvax_time = run_benchmark(partial(block_jax, jax_sot), x, y, runs=runs)
+    key, subkey = jax.random.split(key)
+    korvax_time = run_jax_benchmark(
+        jax_sot, batch_size=batch_size, length=length, key=subkey, runs=runs
+    )
     print(f"Korvax SOT: {korvax_time * 1000:.3f} ms")
 
-    torch_time = run_benchmark(torch_sot, x_torch, y_torch, runs=runs)
+    torch_time = run_torch_benchmark(
+        torch_sot, batch_size=batch_size, length=length, device=device, runs=runs
+    )
     print(f"Torch SOT: {torch_time * 1000:.3f} ms")
 
-    korvax_grad_time = run_benchmark(partial(block_jax, jax_sot_grads), x, y, runs=runs)
+    key, subkey = jax.random.split(key)
+    korvax_grad_time = run_jax_benchmark(
+        jax_sot_grads, batch_size=batch_size, length=length, key=subkey, runs=runs
+    )
     print(f"Korvax SOT grads: {korvax_grad_time * 1000:.3f} ms")
-    x_torch = x_torch.requires_grad_(True)
 
-    torch_grad_time = run_benchmark(torch_sot_grads, x_torch, y_torch, runs=runs)
+    torch_grad_time = run_torch_grad_benchmark(
+        torch_sot_grads, batch_size=batch_size, length=length, device=device, runs=runs
+    )
     print(f"Torch SOT grads: {torch_grad_time * 1000:.3f} ms")
 
 
