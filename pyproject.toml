@@ -26,6 +26,8 @@ build-dir = "build/"
 editable.rebuild = true
 cmake.args = ["-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"]
 
+[tool.uv]
+no-build-isolation = true
 
 [dependency-groups]
 test = [

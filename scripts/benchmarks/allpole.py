@@ -13,6 +13,7 @@ import click
 from time import time
 
 
+# @torch.compile compilation throws a bunch of errors...
 def torch_allpole(a, x):
     return torchlpc.sample_wise_lpc(x, a)
 
@@ -42,9 +43,8 @@ def torch_loss_fn(a, x):
     return torch.mean(y**2)
 
 
-def torch_grads(loss, a, x):
-    a = a.requires_grad_(True)
-    loss = loss(a, x)
+def torch_grads(a, x):
+    loss = torch_loss_fn(a, x)
     loss.backward()
     return a.grad
 
@@ -96,10 +96,6 @@ def main(device, batch_size, order, length, seed, runs, precision):
     jaxpole_time = run_benchmark(partial(block_jax, jaxpole_jit), x, a, zi, runs=runs)
     print(f"JAXPole: {jaxpole_time * 1000:.3f} ms")
 
-    # torch_jit = torch.jit.trace(
-    # torch_allpole,
-    # (a_torch, x_torch),
-    # )
     torch_time = run_benchmark(torch_allpole, a_torch, x_torch, runs=runs)
     print(f"Torch: {torch_time * 1000:.3f} ms")
 
@@ -115,13 +111,9 @@ def main(device, batch_size, order, length, seed, runs, precision):
     )
     print(f"JAXPole grads: {jaxpole_grad_time * 1000:.3f} ms")
 
-    a_torch.requires_grad_(True)
+    a_torch = a_torch.requires_grad_(True)
 
-    torch_loss_jit = torch.jit.trace(torch_loss_fn, (a_torch, x_torch))
-    # torch_loss_jit = torch_loss_fn
-    torch_grad_time = run_benchmark(
-        partial(torch_grads, torch_loss_jit), a_torch, x_torch, runs=runs
-    )
+    torch_grad_time = run_benchmark(torch_grads, a_torch, x_torch, runs=runs)
     print(f"Torch grads: {torch_grad_time * 1000:.3f} ms")
 
 
