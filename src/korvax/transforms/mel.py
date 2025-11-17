@@ -20,6 +20,22 @@ def mel_filterbank(
     norm: Literal["slaney"] | float | None = "slaney",
     dtype: DTypeLike | None = None,
 ) -> Float[Array, " {n_mels} {n_fft}//2+1"]:
+    """Create a mel-scale filterbank.
+
+    Args:
+        sr: Sample rate of the audio signal.
+        n_fft: FFT size (number of samples per frame).
+        n_mels: Number of mel bands to generate.
+        fmin: Minimum frequency (Hz).
+        fmax: Maximum frequency (Hz). If None, defaults to `sr / 2`.
+        htk: If True, use HTK formula for mel scale. Otherwise, use Slaney formula.
+        norm: Normalization mode. If "slaney", use Slaney-style normalization.
+            If a float, use L-norm normalization. If None, no normalization.
+        dtype: Data type for the filterbank. If None, defaults to default float type.
+
+    Returns:
+        Mel filterbank matrix.
+    """
     if fmax is None:
         fmax = sr / 2
 
@@ -47,10 +63,24 @@ def cepstral_coefficients(
     S: Float[Array, "*channels n_freqs n_frames"],
     /,
     n_cc: int = 20,
-    norm: str | None = "ortho",
+    norm: Literal["backward", "ortho"] | None = "ortho",
     mag_scale: Literal["linear", "log", "db"] = "db",
     lifter: float = 0.0,
 ) -> Float[Array, "*channels {n_cc} n_frames"]:
+    """Compute cepstral coefficients from a spectrogram via discrete cosine transform.
+
+    Args:
+        S: Input spectrogram.
+        n_cc: Number of cepstral coefficients to return.
+        norm: Normalization mode for DCT.
+        mag_scale: Magnitude scaling to apply before DCT. Options are "linear" (no scaling),
+            "log" (natural logarithm), or "db" (decibels).
+        lifter: If greater than 0, apply liftering (cepstral filtering) with the specified
+            coefficient.
+
+    Returns:
+        Cepstral coefficients.
+    """
     if mag_scale == "log":
         S = jnp.log(S + 1e-6)
     elif mag_scale == "db":
@@ -76,6 +106,19 @@ def to_mel_scale(
     fmin: float = 0.0,
     fmax: float | None = None,
 ) -> Float[Array, "*channels {n_mels} n_frames"]:
+    """Convert a linear-frequency spectrogram to mel scale.
+
+    Args:
+        S: Input spectrogram.
+        sr: Sample rate of the audio signal.
+        n_fft: FFT size (number of samples per frame).
+        n_mels: Number of mel bands to generate.
+        fmin: Minimum frequency (Hz).
+        fmax: Maximum frequency (Hz). If None, defaults to `sr / 2`.
+
+    Returns:
+        Mel-scale spectrogram.
+    """
     with jax.ensure_compile_time_eval():
         mels = mel_filterbank(
             sr=sr,
@@ -103,6 +146,28 @@ def mel_spectrogram(
     power: float | int = 2.0,
     pad_kwargs: dict[str, Any] = dict(),
 ) -> Float[Array, "*channels {n_mels} n_frames"]:
+    """Compute a mel-scaled spectrogram from a time-domain signal.
+
+    Args:
+        x: Input signal.
+        sr: Sample rate of the audio signal.
+        n_fft: FFT size (number of samples per frame).
+        n_mels: Number of mel bands to generate.
+        fmin: Minimum frequency (Hz).
+        fmax: Maximum frequency (Hz). If None, defaults to `sr / 2`.
+        hop_length: Hop (step) length between adjacent frames. If None, defaults to
+            `win_length // 4`.
+        win_length: Length of the analysis window. If None, defaults to `n_fft`.
+            Ignored if `window` is an array.
+        window: Either a 1d array containing the window to apply to each frame,
+            or a window specification (see [get_window][korvax.util.get_window]).
+        center: If True, pad the input so that frames are centered on their timestamps.
+        power: Exponent for the magnitude spectrogram. If 2.0, returns power spectrogram.
+        pad_kwargs: Additional keyword arguments forwarded to [pad_center][korvax.util.pad_center].
+
+    Returns:
+        Mel-scale spectrogram.
+    """
     S = spectrogram(
         x,
         n_fft=n_fft,
@@ -130,7 +195,7 @@ def mfcc(
     sr: float,
     n_fft: int,
     n_mfcc: int = 20,
-    norm: str | None = "ortho",
+    norm: Literal["backward", "ortho"] | None = "ortho",
     mag_scale: Literal["linear", "log", "db"] = "db",
     lifter: float = 0.0,
     n_mels: int = 128,
@@ -143,6 +208,34 @@ def mfcc(
     power: float | int = 2.0,
     pad_kwargs: dict[str, Any] = dict(),
 ) -> Float[Array, "*channels {n_mfcc} n_frames"]:
+    """Compute mel-frequency cepstral coefficients (MFCCs) from a time-domain signal.
+
+    Args:
+        x: Input signal.
+        sr: Sample rate of the audio signal.
+        n_fft: FFT size (number of samples per frame).
+        n_mfcc: Number of MFCCs to return.
+        norm: Normalization mode for DCT.
+        mag_scale: Magnitude scaling to apply before DCT. Options are "linear" (no scaling),
+            "log" (natural logarithm), or "db" (decibels).
+        lifter: If greater than 0, apply liftering (cepstral filtering) with the specified
+            coefficient.
+        n_mels: Number of mel bands to generate.
+        fmin: Minimum frequency (Hz).
+        fmax: Maximum frequency (Hz). If None, defaults to `sr / 2`.
+        hop_length: Hop (step) length between adjacent frames. If None, defaults to
+            `win_length // 4`.
+        win_length: Length of the analysis window. If None, defaults to `n_fft`.
+            Ignored if `window` is an array.
+        window: Either a 1d array containing the window to apply to each frame,
+            or a window specification (see [get_window][korvax.util.get_window]).
+        center: If True, pad the input so that frames are centered on their timestamps.
+        power: Exponent for the magnitude spectrogram. If 2.0, returns power spectrogram.
+        pad_kwargs: Additional keyword arguments forwarded to [pad_center][korvax.util.pad_center].
+
+    Returns:
+        Mel-frequency cepstral coefficients.
+    """
     S = mel_spectrogram(
         x,
         sr=sr,

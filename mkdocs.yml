@@ -1,6 +1,9 @@
 site_name: Korvax
 site_author: David Marttila
-theme: readthedocs
+theme:
+  name: material
+  palette:
+    scheme: slate
 
 plugins:
   - mkdocstrings:
@@ -9,3 +12,5 @@ plugins:
           paths: [src]
           options:
             docstring_style: google
+            show_root_heading: True
+            heading_level: 3

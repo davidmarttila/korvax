@@ -1,4 +1,4 @@
-from .stft import (
+from .fourier import (
     stft as stft,
     istft as istft,
     spectrogram as spectrogram,
