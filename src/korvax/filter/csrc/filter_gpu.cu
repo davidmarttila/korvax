@@ -2,6 +2,8 @@
 #include "_common.h"
 
 namespace ffi = xla::ffi;
+
+// CUDA kernel taken from https://github.com/DiffAPF/torchlpc/blob/dev/torchlpc/csrc/cuda/lpc.cu
 template <typename scalar_t>
 __global__ void allpole_kernel(scalar_t *out,     // [B, T + order]
                                const scalar_t *A, // [B, T, order]

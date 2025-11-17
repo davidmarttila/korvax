@@ -171,9 +171,28 @@ def spectrogram(
     win_length: int | None = None,
     window: _WindowSpec = "hann",
     center: bool = True,
-    power: float | int = 2.0,
+    power: float | int | None = 2.0,
     pad_kwargs: dict[str, Any] = dict(),
 ) -> Inexact[Array, "*channels {n_fft}//2+1 n_frames"]:
+    """Compute the magnitude spectrogram of a time-domain signal.
+
+    Args:
+        x: Input signal.
+        n_fft: FFT size (number of samples per frame).
+        hop_length: Hop (step) length between adjacent frames. If None, defaults to
+            `win_length // 4`.
+        win_length: Length of the analysis window. If None, defaults to `n_fft`.
+            Ignored if `window` is an array.
+        window: Either a 1d array containing the window to apply to each frame,
+            or a window specification (see [get_window][korvax.util.get_window]).
+        center: If True, pad the input so that frames are centered on their timestamps.
+        power: Exponent for the magnitude spectrogram. If 2.0, returns power spectrogram.
+            If None, returns complex STFT coefficients.
+        pad_kwargs: Additional keyword arguments forwarded to [pad_center][korvax.util.pad_center].
+
+    Returns:
+        Magnitude spectrogram.
+    """
     x = stft(
         x,
         n_fft=n_fft,
@@ -205,6 +224,31 @@ def griffin_lim(
     momentum: float = 0.99,
     pad_kwargs: dict[str, Any] = dict(),
 ) -> Float[Array, "*channels n_samples"]:
+    """Reconstruct a time-domain signal from a magnitude spectrogram using the Griffin-Lim algorithm.
+
+    Args:
+        S: Magnitude spectrogram.
+        key: JAX PRNG key for random phase initialization. If None, uses zero phase
+            initialization.
+        n_iter: Number of Griffin-Lim iterations to perform.
+        n_fft: FFT size (number of samples per frame). If None, inferred from spectrogram
+            shape.
+        hop_length: Hop (step) length between adjacent frames. If None, defaults to
+            `win_length // 4`.
+        win_length: Length of the analysis window. If None, defaults to `n_fft`.
+            Ignored if `window` is an array.
+        window: Either a 1d array containing the window to apply to each frame,
+            or a window specification (see [get_window][korvax.util.get_window]).
+        center: If True, frames are assumed to be centered in time. If False, they
+            are assumed to be left-aligned in time.
+        length: If provided, the output will be trimmed or zero-padded to exactly this
+            length.
+        momentum: Momentum parameter for fast Griffin-Lim (typically between 0 and 1).
+        pad_kwargs: Additional keyword arguments forwarded to [pad_center][korvax.util.pad_center].
+
+    Returns:
+        Reconstructed time-domain signal.
+    """
     S = jnp.asarray(S)
 
     if n_fft is None:
