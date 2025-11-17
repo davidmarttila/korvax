@@ -10,6 +10,8 @@ JAX is a very powerful library for signal processing related tasks because of it
 * [nnAudio](https://github.com/KinWaiCheuk/nnAudio)
 * [sot-loss](https://github.com/kan-bayashi/sot-loss)
 
+Direct ports to JAX result in noticeable speedups across quite a few use cases -- verify for yourself by running some of the code in `scripts/benchmarks`!
+
 ## Installation
 
 Install it via pip:
