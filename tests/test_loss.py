@@ -97,9 +97,9 @@ def test_mel_stft_loss(signals):
 
 @pytest.mark.parametrize("normalize", [True, False])
 @pytest.mark.parametrize("balanced", [True, False])
-@pytest.mark.parametrize("limit_quantile_range", [True, False])
+@pytest.mark.parametrize("quantile_lowpass", [True, False])
 @pytest.mark.parametrize("p", [1, 2])
-def test_stft_sot_loss(signals, normalize, balanced, limit_quantile_range, p):
+def test_stft_sot_loss(signals, normalize, balanced, quantile_lowpass, p):
     x, y = signals
     loss = korvax.loss.time_frequency_loss(
         x,
@@ -115,7 +115,7 @@ def test_stft_sot_loss(signals, normalize, balanced, limit_quantile_range, p):
             korvax.loss.spectral_optimal_transport_loss,
             balanced=balanced,
             normalize=normalize,
-            limit_quantile_range=limit_quantile_range,
+            quantile_lowpass=quantile_lowpass,
             p=p,
         ),
     )
@@ -129,7 +129,7 @@ def test_stft_sot_loss(signals, normalize, balanced, limit_quantile_range, p):
             sample_rate=16000,
             balanced=balanced,
             normalize=normalize,
-            quantile_lowpass=limit_quantile_range,
+            quantile_lowpass=quantile_lowpass,
             p=p,
         )(
             torch.from_numpy(np.array(x)),

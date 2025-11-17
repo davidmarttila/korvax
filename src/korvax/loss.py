@@ -152,9 +152,13 @@ def spectral_optimal_transport_loss(
         S_y = S_y * (total_mass_x / total_mass_y)
 
     return jax.vmap(
-        _wasserstein_1d,
-        in_axes=(0, 0, None, None, None),
-    )(S_x, S_y, positions, p, limit_quantile_range=quantile_lowpass).mean()
+        partial(
+            _wasserstein_1d,
+            positions=positions,
+            p=p,
+            limit_quantile_range=quantile_lowpass,
+        )
+    )(S_x, S_y).mean()
 
 
 def time_frequency_loss(
