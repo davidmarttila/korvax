@@ -1,5 +1,5 @@
 import jax
-from .allpole import allpole as allpole
+from ._allpole import allpole as allpole
 from . import _filter_cpu
 
 try:

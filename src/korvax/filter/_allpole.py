@@ -39,6 +39,29 @@ def allpole(
     Float[Array, " n_samples"]
     | tuple[Float[Array, " n_samples"], Float[Array, " order"]]
 ):
+    """Apply a time-varying all-pole filter to the input signal.
+
+    Port of `philtorch.lpv.allpole`. Uses the efficient differentiation method proposed in [1].
+
+    This function only operates on 1D signals, use `jax.vmap` to apply it to batched inputs.
+
+
+    Args:
+        x: Input signal of shape `(n_samples,)`.
+        a: Time-varying all-pole coefficients of shape `(n_samples, order)`.
+        zi: Initial conditions of shape `(order,)`. If `None`, zeros are used.
+        return_zi: If `True`, return the final conditions along with the output.
+
+    Returns:
+        If `return_zi` is `False`, returns the filtered signal of shape `(n_samples,)`. If `return_zi` is `True`, returns a tuple containing:
+
+            - Filtered signal of shape `(n_samples,)`
+            - Final conditions of shape `(order,)`
+
+    References:
+        [1] C.-Y. Yu, C. Mitcheltree, A. Carson, S. Bilbao, J. D. Reiss, and G. Fazekas. "Differentiable All-Pole Filters for Time-Varying Audio Systems," in Proc. DAFx, 2024.
+    """
+
     order = a.shape[-1]
     if zi is None:
         zi = jnp.zeros((order,), dtype=x.dtype)

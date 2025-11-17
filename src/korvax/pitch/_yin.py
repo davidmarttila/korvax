@@ -74,6 +74,24 @@ def yin(
     center: bool = True,
     pad_kwargs: dict[str, Any] = dict(),
 ) -> Float[Array, "*channels n_frames"]:
+    """Estimate fundamental frequency using the YIN algorithm.
+
+    Args:
+        x: Input signal.
+        fmin: Minimum frequency (Hz) to search.
+        fmax: Maximum frequency (Hz) to search.
+        sr: Sample rate of the audio signal.
+        frame_length: Length of each analysis frame in samples.
+        hop_length: Hop (step) length between adjacent frames. If None, defaults to
+            `frame_length // 4`.
+        trough_threshold: Absolute threshold for peak selection. Troughs below this
+            value are considered valid pitch candidates.
+        center: If True, pad the input so that frames are centered on their timestamps.
+        pad_kwargs: Additional keyword arguments forwarded to [pad_center][korvax.util.pad_center].
+
+    Returns:
+        Estimated fundamental frequency for each frame in Hz.
+    """
     x = jnp.asarray(x)
 
     # Set the default hop if it is not already specified.
@@ -150,6 +168,29 @@ def pyin_emission_probabilities(
     center: bool = True,
     pad_kwargs: dict[str, Any] = dict(),
 ) -> Float[Array, "*channels n_bins n_frames"]:
+    """Compute emission probabilities for the pYIN algorithm.
+
+    Args:
+        x: Input signal.
+        fmin: Minimum frequency (Hz) to search.
+        fmax: Maximum frequency (Hz) to search.
+        sr: Sample rate of the audio signal.
+        frame_length: Length of each analysis frame in samples.
+        hop_length: Hop (step) length between adjacent frames. If None, defaults to
+            `frame_length // 4`.
+        n_thresholds: Number of thresholds for the Beta distribution.
+        beta_parameters: Parameters (alpha, beta) for the Beta distribution prior.
+        boltzmann_parameter: Parameter for Boltzmann distribution over trough positions.
+        resolution: Frequency resolution in semitones.
+        no_trough_prob: Probability mass assigned to global minimum when no trough
+            is found below threshold.
+        normalize: If True, normalize probabilities to sum to 1.
+        center: If True, pad the input so that frames are centered on their timestamps.
+        pad_kwargs: Additional keyword arguments forwarded to [pad_center][korvax.util.pad_center].
+
+    Returns:
+        Emission probability matrix for each pitch bin and frame.
+    """
     x = jnp.asarray(x)
     if hop_length is None:
         hop_length = frame_length // 4
@@ -281,6 +322,34 @@ def pyin(
     Bool[Array, "*channels n_frames"],
     Float[Array, "*channels n_frames"],
 ]:
+    """Estimate fundamental frequency using the probabilistic YIN (pYIN) algorithm.
+
+    Args:
+        x: Input signal.
+        fmin: Minimum frequency (Hz) to search.
+        fmax: Maximum frequency (Hz) to search.
+        sr: Sample rate of the audio signal.
+        frame_length: Length of each analysis frame in samples.
+        hop_length: Hop (step) length between adjacent frames. If None, defaults to
+            `frame_length // 4`.
+        n_thresholds: Number of thresholds for the Beta distribution.
+        beta_parameters: Parameters (alpha, beta) for the Beta distribution prior.
+        boltzmann_parameter: Parameter for Boltzmann distribution over trough positions.
+        resolution: Frequency resolution in semitones.
+        no_trough_prob: Probability mass assigned to global minimum when no trough
+            is found below threshold.
+        max_transition_rate: Maximum pitch transition rate in semitones per second.
+        switch_prob: Probability of switching between voiced and unvoiced states.
+        fill_na: Value to fill for unvoiced frames. If None, uses the estimated
+            frequency even for unvoiced frames.
+        center: If True, pad the input so that frames are centered on their timestamps.
+        pad_kwargs: Additional keyword arguments forwarded to [pad_center][korvax.util.pad_center].
+
+    Returns:
+        f0: estimated fundamental frequency
+        voiced_flag: indicates voiced frames
+        voiced_prob: probability of voicing for each frame
+    """
     if hop_length is None:
         hop_length = frame_length // 4
 

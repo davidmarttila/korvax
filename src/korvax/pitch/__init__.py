@@ -3,7 +3,7 @@ from .viterbi import (
     viterbi_decode as viterbi_decode,
 )
 
-from .yin import (
+from ._yin import (
     yin as yin,
     pyin_emission_probabilities as pyin_emission_probabilities,
     pyin as pyin,
