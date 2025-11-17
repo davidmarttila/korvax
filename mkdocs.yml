@@ -4,6 +4,14 @@ theme:
   name: material
   palette:
     scheme: slate
+  features:
+    - search.highlight
+    - search.suggest
+    - toc.integrate
+    - content.code.annotate
+    - content.code.copy
+    - content.code.fold
+    - content.tabs.link
 
 plugins:
   - mkdocstrings:

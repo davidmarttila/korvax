@@ -1,17 +1,38 @@
-# Welcome to MkDocs
+# Home
 
-For full documentation visit [mkdocs.org](https://www.mkdocs.org).
+Korvax ("korva" means "ear" in Finnish) is a Python package for audio signal processing and machine learning in JAX. Korvax is framework-agnostic; it can be used in Flax, Equinox, or any other JAX framework.
 
-## Commands
+JAX is a very powerful library for signal processing related tasks because of its composable function transformations (e.g., `jit`, `vmap`, `grad`, `pmap`, etc.), and often faster than PyTorch. However, PyTorch has a lot more available packages for audio processing. Korvax aims to fill this gap for JAX by porting functionality from packages such as:
 
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
+* [torchaudio](https://pytorch.org/audio/stable/index.html)
+* [librosa](https://librosa.org/doc/latest/index.html)
+* [philtorch](https://github.com/yoyolicoris/philtorch)
+* [nnAudio](https://github.com/KinWaiCheuk/nnAudio)
+* [sot-loss](https://github.com/kan-bayashi/sot-loss)
 
-## Project layout
+## Installation
 
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+Install it via pip:
+
+```bash
+pip install korvax
+```
+
+Korvax provides a `[cuda12]` that simply makes sure that `jax[cuda12]` is installed:
+
+```bash
+pip install "korvax[cuda12]"
+```
+
+## Features
+
+Currently, Korvax provides:
+
+- Time-frequency loss functions (MR-STFT, Spectral Optimal Transport)
+- Pitch estimation algorithms
+- Time-varying all-pole filtering
+- Resampling
+- Transforms (STFT, Mel spectrogram, MFCCs, etc.)
+
+All features are GPU-ready and differentiable.
+
