@@ -18,7 +18,7 @@ Install it via pip:
 pip install korvax
 ```
 
-Korvax provides a `[cuda12]` that simply makes sure that `jax[cuda12]` is installed:
+Korvax provides a `[cuda12]` option that simply makes sure that `jax[cuda12]` is installed:
 
 ```bash
 pip install "korvax[cuda12]"
@@ -36,3 +36,4 @@ Currently, Korvax provides:
 
 All features are GPU-ready and differentiable.
 
+See the documentation in the sidebar for more details and usage examples.

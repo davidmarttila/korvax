@@ -2,6 +2,7 @@
 name = "korvax"
 version = "0.1.1"
 description = "JAX utilities for Audio DSP and ML"
+urls = { "Homepage" = "https://korvax.readthedocs.io/", "Documentation" = "https://korvax.readthedocs.io/", "Repository" = "https://github.com/davidmarttila/korvax" }
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE", "LICENSE-3RD-PARTY"]

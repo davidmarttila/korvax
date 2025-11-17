@@ -1,5 +1,6 @@
 site_name: Korvax
 site_author: David Marttila
+site_url: https://korvax.readthedocs.io/
 theme:
   name: material
   palette:
