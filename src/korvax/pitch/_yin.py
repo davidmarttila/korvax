@@ -4,9 +4,9 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 
-from jaxtyping import Array, ArrayLike, Bool, Float, Integer
+from jaxtyping import Array, ArrayLike, Float, Integer
 
-from . import make_transition_matrix, viterbi_decode
+# from . import make_transition_matrix, viterbi_decode
 from .. import util
 
 
@@ -299,113 +299,113 @@ def pyin_emission_probabilities(
     return yin_probs
 
 
-def pyin(
-    x: Float[ArrayLike, "*channels n_samples"],
-    /,
-    fmin: float,
-    fmax: float,
-    sr: float,
-    frame_length: int = 2048,
-    hop_length: int | None = None,
-    n_thresholds: int = 100,
-    beta_parameters: tuple[float, float] = (2.0, 18.0),
-    boltzmann_parameter: float = 2.0,
-    resolution: float = 0.1,
-    no_trough_prob: float = 0.01,
-    max_transition_rate: float = 35.92,
-    switch_prob: float = 0.01,
-    fill_na: float | None = jnp.nan,
-    center: bool = True,
-    pad_kwargs: dict[str, Any] = dict(),
-) -> tuple[
-    Float[Array, "*channels n_frames"],
-    Bool[Array, "*channels n_frames"],
-    Float[Array, "*channels n_frames"],
-]:
-    """Estimate fundamental frequency using the probabilistic YIN (pYIN) algorithm.
+# def pyin(
+#     x: Float[ArrayLike, "*channels n_samples"],
+#     /,
+#     fmin: float,
+#     fmax: float,
+#     sr: float,
+#     frame_length: int = 2048,
+#     hop_length: int | None = None,
+#     n_thresholds: int = 100,
+#     beta_parameters: tuple[float, float] = (2.0, 18.0),
+#     boltzmann_parameter: float = 2.0,
+#     resolution: float = 0.1,
+#     no_trough_prob: float = 0.01,
+#     max_transition_rate: float = 35.92,
+#     switch_prob: float = 0.01,
+#     fill_na: float | None = jnp.nan,
+#     center: bool = True,
+#     pad_kwargs: dict[str, Any] = dict(),
+# ) -> tuple[
+#     Float[Array, "*channels n_frames"],
+#     Bool[Array, "*channels n_frames"],
+#     Float[Array, "*channels n_frames"],
+# ]:
+#     """Estimate fundamental frequency using the probabilistic YIN (pYIN) algorithm.
 
-    Args:
-        x: Input signal.
-        fmin: Minimum frequency (Hz) to search.
-        fmax: Maximum frequency (Hz) to search.
-        sr: Sample rate of the audio signal.
-        frame_length: Length of each analysis frame in samples.
-        hop_length: Hop (step) length between adjacent frames. If None, defaults to
-            `frame_length // 4`.
-        n_thresholds: Number of thresholds for the Beta distribution.
-        beta_parameters: Parameters (alpha, beta) for the Beta distribution prior.
-        boltzmann_parameter: Parameter for Boltzmann distribution over trough positions.
-        resolution: Frequency resolution in semitones.
-        no_trough_prob: Probability mass assigned to global minimum when no trough
-            is found below threshold.
-        max_transition_rate: Maximum pitch transition rate in semitones per second.
-        switch_prob: Probability of switching between voiced and unvoiced states.
-        fill_na: Value to fill for unvoiced frames. If None, uses the estimated
-            frequency even for unvoiced frames.
-        center: If True, pad the input so that frames are centered on their timestamps.
-        pad_kwargs: Additional keyword arguments forwarded to [pad_center][korvax.util.pad_center].
+#     Args:
+#         x: Input signal.
+#         fmin: Minimum frequency (Hz) to search.
+#         fmax: Maximum frequency (Hz) to search.
+#         sr: Sample rate of the audio signal.
+#         frame_length: Length of each analysis frame in samples.
+#         hop_length: Hop (step) length between adjacent frames. If None, defaults to
+#             `frame_length // 4`.
+#         n_thresholds: Number of thresholds for the Beta distribution.
+#         beta_parameters: Parameters (alpha, beta) for the Beta distribution prior.
+#         boltzmann_parameter: Parameter for Boltzmann distribution over trough positions.
+#         resolution: Frequency resolution in semitones.
+#         no_trough_prob: Probability mass assigned to global minimum when no trough
+#             is found below threshold.
+#         max_transition_rate: Maximum pitch transition rate in semitones per second.
+#         switch_prob: Probability of switching between voiced and unvoiced states.
+#         fill_na: Value to fill for unvoiced frames. If None, uses the estimated
+#             frequency even for unvoiced frames.
+#         center: If True, pad the input so that frames are centered on their timestamps.
+#         pad_kwargs: Additional keyword arguments forwarded to [pad_center][korvax.util.pad_center].
 
-    Returns:
-        f0: estimated fundamental frequency
-        voiced_flag: indicates voiced frames
-        voiced_prob: probability of voicing for each frame
-    """
-    if hop_length is None:
-        hop_length = frame_length // 4
+#     Returns:
+#         f0: estimated fundamental frequency
+#         voiced_flag: indicates voiced frames
+#         voiced_prob: probability of voicing for each frame
+#     """
+#     if hop_length is None:
+#         hop_length = frame_length // 4
 
-    emission_probs = pyin_emission_probabilities(
-        x,
-        fmin=fmin,
-        fmax=fmax,
-        sr=sr,
-        frame_length=frame_length,
-        hop_length=hop_length,
-        n_thresholds=n_thresholds,
-        beta_parameters=beta_parameters,
-        boltzmann_parameter=boltzmann_parameter,
-        resolution=resolution,
-        no_trough_prob=no_trough_prob,
-        normalize=False,
-        center=center,
-        pad_kwargs=pad_kwargs,
-    )
+#     emission_probs = pyin_emission_probabilities(
+#         x,
+#         fmin=fmin,
+#         fmax=fmax,
+#         sr=sr,
+#         frame_length=frame_length,
+#         hop_length=hop_length,
+#         n_thresholds=n_thresholds,
+#         beta_parameters=beta_parameters,
+#         boltzmann_parameter=boltzmann_parameter,
+#         resolution=resolution,
+#         no_trough_prob=no_trough_prob,
+#         normalize=False,
+#         center=center,
+#         pad_kwargs=pad_kwargs,
+#     )
 
-    n_pitch_bins = emission_probs.shape[-2]
-    voiced_probs = jnp.sum(emission_probs, axis=-2, keepdims=True).clip(0.0, 1.0)
+#     n_pitch_bins = emission_probs.shape[-2]
+#     voiced_probs = jnp.sum(emission_probs, axis=-2, keepdims=True).clip(0.0, 1.0)
 
-    unvoiced_probs = (1 - voiced_probs) / n_pitch_bins
-    unvoiced_probs = jnp.broadcast_to(unvoiced_probs, emission_probs.shape)
+#     unvoiced_probs = (1 - voiced_probs) / n_pitch_bins
+#     unvoiced_probs = jnp.broadcast_to(unvoiced_probs, emission_probs.shape)
 
-    emission_probs = jnp.concat([emission_probs, unvoiced_probs], axis=-2)
+#     emission_probs = jnp.concat([emission_probs, unvoiced_probs], axis=-2)
 
-    bins_per_semitone = int(jnp.ceil(1.0 / resolution))
+#     bins_per_semitone = int(jnp.ceil(1.0 / resolution))
 
-    transition_matrix = make_transition_matrix(
-        max_transition_rate,
-        hop_length,
-        sr,
-        bins_per_semitone,
-        n_pitch_bins,
-    )
+#     transition_matrix = make_transition_matrix(
+#         max_transition_rate,
+#         hop_length,
+#         sr,
+#         bins_per_semitone,
+#         n_pitch_bins,
+#     )
 
-    switch_matrix = jnp.array(
-        ((1 - switch_prob, switch_prob), (switch_prob, 1 - switch_prob))
-    )
+#     switch_matrix = jnp.array(
+#         ((1 - switch_prob, switch_prob), (switch_prob, 1 - switch_prob))
+#     )
 
-    transition_matrix = jnp.kron(switch_matrix, transition_matrix)
+#     transition_matrix = jnp.kron(switch_matrix, transition_matrix)
 
-    p_init = jnp.full((2 * n_pitch_bins,), 1 / (2 * n_pitch_bins))
+#     p_init = jnp.full((2 * n_pitch_bins,), 1 / (2 * n_pitch_bins))
 
-    states = viterbi_decode(
-        p_init,
-        transition_matrix,
-        jnp.log(emission_probs + util.feps(emission_probs)),
-    )
+#     states = viterbi_decode(
+#         p_init,
+#         transition_matrix,
+#         jnp.log(emission_probs + util.feps(emission_probs)),
+#     )
 
-    freqs = fmin * 2 ** (jnp.arange(n_pitch_bins) / (12 * bins_per_semitone))
-    f0 = freqs[states % n_pitch_bins]
-    voiced_flag = states < n_pitch_bins
-    if fill_na is not None:
-        f0 = jnp.where(voiced_flag, f0, fill_na)
+#     freqs = fmin * 2 ** (jnp.arange(n_pitch_bins) / (12 * bins_per_semitone))
+#     f0 = freqs[states % n_pitch_bins]
+#     voiced_flag = states < n_pitch_bins
+#     if fill_na is not None:
+#         f0 = jnp.where(voiced_flag, f0, fill_na)
 
-    return f0, voiced_flag, voiced_probs.squeeze(axis=-2)
+#     return f0, voiced_flag, voiced_probs.squeeze(axis=-2)

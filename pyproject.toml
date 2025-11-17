@@ -11,7 +11,6 @@ requires-python = ">=3.11"
 dependencies = [
     "jax>=0.6.2",
     "jaxtyping>=0.3.3",
-    "dynamax @ git+https://github.com/davidmarttila/dynamax.git@main",
 ]
 
 classifiers = [

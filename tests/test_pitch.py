@@ -56,9 +56,9 @@ def test_yin_chirp_instant():
     assert jnp.allclose(jnp.log2(f0), jnp.log2(target_f0), rtol=0, atol=1e-2)
 
 
-@pytest.mark.parametrize("freq", [110.0, 220.0, 440.0, 880.0])
-def test_pyin_tone(freq):
-    sr = 22050.0
-    y = librosa.tone(freq, sr=sr, duration=1.0)
-    f0, _, _ = korvax.pitch.pyin(y, sr=sr, fmin=110.0, fmax=1000.0, center=False)
-    assert jnp.allclose(jnp.log2(f0), jnp.log2(freq), rtol=0, atol=1e-2)
+# @pytest.mark.parametrize("freq", [110.0, 220.0, 440.0, 880.0])
+# def test_pyin_tone(freq):
+#     sr = 22050.0
+#     y = librosa.tone(freq, sr=sr, duration=1.0)
+#     f0, _, _ = korvax.pitch.pyin(y, sr=sr, fmin=110.0, fmax=1000.0, center=False)
+#     assert jnp.allclose(jnp.log2(f0), jnp.log2(freq), rtol=0, atol=1e-2)
