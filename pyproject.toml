@@ -1,6 +1,6 @@
 [project]
 name = "korvax"
-version = "0.1.1"
+version = "0.2.0"
 description = "JAX utilities for Audio DSP and ML"
 urls = { "Homepage" = "https://korvax.readthedocs.io/", "Documentation" = "https://korvax.readthedocs.io/", "Repository" = "https://github.com/davidmarttila/korvax" }
 readme = "README.md"
@@ -11,8 +11,7 @@ requires-python = ">=3.11"
 dependencies = [
     "jax>=0.6.2",
     "jaxtyping>=0.3.3",
-    "dynamax>=1.0.1",
-    "tfp-nightly>=0.26.0.dev20251108", # https://github.com/tensorflow/probability/issues/1994#issuecomment-3129033043
+    "dynamax @ git+https://github.com/davidmarttila/dynamax.git@main",
 ]
 
 classifiers = [
