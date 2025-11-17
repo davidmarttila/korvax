@@ -1,3 +1,5 @@
+#include <cstring>
+
 #include "xla/ffi/api/ffi.h"
 #include "nanobind/nanobind.h"
 #include "_common.h"

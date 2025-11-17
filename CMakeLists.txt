@@ -1,7 +1,5 @@
-cmake_minimum_required(VERSION 3.30)
+cmake_minimum_required(VERSION 3.20)
 project(${SKBUILD_PROJECT_NAME} LANGUAGES CXX)
-
-option(JAX_FFI_EXAMPLE_ENABLE_CUDA "Enable CUDA support" OFF)
 
 find_package(Python 3.11 REQUIRED COMPONENTS Interpreter Development.Module)
 execute_process(
