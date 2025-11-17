@@ -38,6 +38,7 @@ build-backend = "scikit_build_core.build"
 build-dir = "build/"
 # editable.rebuild = true
 cmake.args = ["-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"]
+sdist.exclude = [".github", "tests", "docs", "scripts"]
 
 # [tool.uv]
 # no-build-isolation = true
@@ -85,3 +86,6 @@ ignore = ["F722"]
 
 [tool.basedpyright]
 typeCheckingMode = "standard"
+
+[tool.cibuildwheel]
+build-frontend = "build[uv]"

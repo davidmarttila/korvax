@@ -30,7 +30,10 @@ find_package(CUDAToolkit)
 if(CUDAToolkit_FOUND)
   enable_language(CUDA)
   nanobind_add_module(_filter_gpu NB_STATIC "${filter_dir}/filter_gpu.cu")
-  set_target_properties(_filter_gpu PROPERTIES POSITION_INDEPENDENT_CODE ON CUDA_STANDARD 17)
+  set_target_properties(_filter_gpu PROPERTIES POSITION_INDEPENDENT_CODE ON CUDA_STANDARD 17 CUDA_ARCHITECTURES "60;70;75;80;86;89;90")
+  
+  # Volta (70), Turing (75), Ampere (80, 86), Ada (89), Hopper (90)
+  set_target_properties(_filter_gpu PROPERTIES CUDA_ARCHITECTURES "70;75;80;86;89;90")
 
   target_link_libraries(_filter_gpu PRIVATE CUDA::cudart)
   target_include_directories(_filter_gpu PUBLIC ${XLA_DIR})
