@@ -32,6 +32,15 @@ def spectral_convergence_loss(
     S_x: Float[Array, "*channels n_freq n_frames"],
     S_y: Float[Array, "*channels n_freq n_frames"],
 ) -> Float[Array, ""]:
+    """Compute spectral convergence loss between two spectrograms.
+
+    Args:
+        S_x: Input spectrogram.
+        S_y: Target spectrogram.
+
+    Returns:
+        Scalar loss value.
+    """
     numerator = jnp.linalg.norm(S_y - S_x, ord="fro", axis=(-2, -1))
     denominator = jnp.linalg.norm(S_y, ord="fro", axis=(-2, -1))
     loss = numerator / (denominator + util.feps(denominator))
@@ -39,15 +48,26 @@ def spectral_convergence_loss(
 
 
 def elementwise_loss(
-    x: Float[Array, "*dims"],
-    y: Float[Array, "*dims"],
+    S_x: Float[Array, "*dims"],
+    S_y: Float[Array, "*dims"],
     /,
     metric: Literal["L1", "L2"] = "L1",
 ) -> Float[Array, ""]:
+    """Compute elementwise L1 or L2 loss between two arrays.
+
+    Args:
+        S_x: Input array.
+        S_y: Target array.
+        metric: Distance metric to use. Either "L1" (mean absolute error) or "L2"
+            (mean squared error).
+
+    Returns:
+        Scalar loss value.
+    """
     if metric == "L1":
-        loss = jnp.abs(x - y)
+        loss = jnp.abs(S_x - S_y)
     elif metric == "L2":
-        loss = (x - y) ** 2
+        loss = (S_x - S_y) ** 2
 
     return jnp.mean(loss)
 
@@ -88,8 +108,29 @@ def spectral_optimal_transport_loss(
     p: int = 2,
     normalize: bool = True,
     balanced: bool = True,
-    limit_quantile_range: bool = False,
+    quantile_lowpass: bool = False,
 ) -> Float[Array, ""]:
+    """Compute the frame-wise 1D Wasserstein distance, known as spectral optimal transport [1, 2].
+
+    The implementation and API are based on [sot-loss](https://github.com/bernardo-torres/spectral-optimal-transport/).
+
+    Args:
+        S_x: Input spectrogram.
+        S_y: Target spectrogram.
+        positions: Positions of frequency bins. If None, uses uniform spacing in [0, 1).
+        p: Order of the Wasserstein distance (typically 1 or 2).
+        normalize: Whether to normalize spectrograms to sum to 1.
+        balanced: If True, `S_x` and `S_y` are normalized independently. If False, `S_y` is scaled to have the same total mass as `S_x`.
+        quantile_lowpass: If True, zeroes out bins in `S_y` for quantiles above 1.0. Useful when `balanced` is False.
+
+    Returns:
+        Scalar loss value.
+
+    References:
+        [1] E. Cazelles, A. Robert, F. Tobar, "The Wasserstein-Fourier Distance for Stationary Time Series," IEEE Transactions on Signal Processing, vol. 69, pp. 709-721, 2020.
+
+        [2] B. Torres, G. Peeters, G. Richard, "Unsupervised Harmonic Parameter Estimation Using Differentiable DSP and Spectral Optimal Transport,", in Proc. ICASSP 2024, pp. 1176-1180, 2024.
+    """
     n_bins = S_x.shape[-2]
 
     if positions is None:
@@ -113,7 +154,7 @@ def spectral_optimal_transport_loss(
     return jax.vmap(
         _wasserstein_1d,
         in_axes=(0, 0, None, None, None),
-    )(S_x, S_y, positions, p, limit_quantile_range).mean()
+    )(S_x, S_y, positions, p, limit_quantile_range=quantile_lowpass).mean()
 
 
 def time_frequency_loss(
@@ -125,6 +166,97 @@ def time_frequency_loss(
     scale_fn: ScaleFn | Sequence[ScaleFn] | None = None,
     weights: Sequence[float] | Float[ArrayLike, " n_losses"] | None = None,
 ) -> Float[Array, ""]:
+    """Compute a time-frequency loss between two signals.
+
+    If loss_fn and scale_fn are sequences, they need to be the same length.
+    The resulting losses are combined as a weighted sum, either
+    using the provided `weights` or equal weighting if `weights` is `None`.
+
+    Args:
+        x: Input signal.
+        y: Target signal.
+        transform_fn: Function to compute the time-frequency representation.
+        loss_fn: Loss function(s) to apply in the time-frequency domain.
+        scale_fn: Optional scaling function(s) to apply to the time-frequency representations before computing the loss.
+        weights: Optional weights for each loss function. If `None`, equal weighting is used.
+
+    Returns:
+        The scalar loss value.
+
+    Example:
+        Define linear STFT loss with loudness A-weighting applied as scaling:
+
+        ```python
+        a_weighted_stft_loss = functools.partial(
+            korvax.loss.time_frequency_loss,
+            transform_fn=functools.partial(
+                korvax.spectrogram,
+                win_length=2048,
+                power=1,
+            ),
+            loss_fn=functools.partial(korvax.loss.elementwise_loss, metric="L1"),
+            scale_fn=lambda S: korvax.amplitude_to_db(S) + korvax.A_weighting(
+                korvax.fft_frequencies(sr=16000, n_fft=2048)
+            )[:, None],
+        )
+        ```
+
+    Example:
+        Define a combination of spectral optimal transport and L1 log magnitude loss on power spectrograms:
+
+        ```python
+        combined_lin_sot_loss = functools.partial(
+            korvax.loss.time_frequency_loss,
+            transform_fn=functools.partial(
+                korvax.spectrogram,
+                win_length=2048,
+                power=2,
+            ),
+            loss_fn=[
+                korvax.loss.spectral_optimal_transport_loss,
+                functools.partial(korvax.loss.elementwise_loss, metric="L1"),
+            ],
+            scale_fn=[
+                lambda S: S,
+                korvax.power_to_db
+            ],
+            weights=[1.0, 0.1],
+        )
+        ```
+
+    Example:
+        Define a multi-resolution STFT loss (also see [`mrstft_loss`][..mrstft_loss]):
+
+        ```python
+        def my_mrstft_loss(x, y):
+            hops = [128, 256, 512]
+            wins = [512, 1024, 2048]
+
+            loss_fn = functools.partial(
+                korvax.loss.elementwise_loss,
+                metric="L1",
+            )
+
+            loss = 0.0
+            for hop, win in zip(hops, wins):
+                transform = functools.partial(
+                    korvax.spectrogram,
+                    win_length=win,
+                    hop_length=hop,
+                    power=1,
+                )
+                loss += korvax.loss.time_frequency_loss(
+                    x,
+                    y,
+                    transform_fn=transform,
+                    loss_fn=loss_fn,
+                    scale_fn=korvax.amplitude_to_db,
+                )
+
+            return loss / len(hops)
+        ```
+    """
+
     if not isinstance(loss_fn, Sequence):
         loss_fn = [loss_fn]
 
@@ -169,7 +301,31 @@ def mrstft_loss(
     log_dist: Literal["L1", "L2"] = "L1",
     log_fac: float = 1.0,
     log_eps: float = 1e-7,
+    power: float | int = 1,
 ) -> Float[Array, ""]:
+    """Multi-resolution STFT loss (also known as multi-scale spectral loss).
+
+    * Linear magnitudes are computed as `abs(STFT)**power`.
+    * Log magnitudes are computed as `log(log_fac * abs(STFT)**power + log_eps)`.
+
+    Args:
+        x: Input signal.
+        y: Target signal.
+        hop_lengths: Sequence of hop lengths for STFTs.
+        win_lengths: Sequence of window lengths for STFTs.
+        fft_sizes: Sequence of FFT sizes for STFTs. If None, uses `win_lengths`.
+        window: Window function specification.
+        w_lin: Weight for linear magnitude loss.
+        w_log: Weight for log magnitude loss.
+        lin_dist: Distance metric for linear magnitude loss.
+        log_dist: Distance metric for log magnitude loss.
+        log_fac: Scaling factor for log magnitude.
+        log_eps: Additive constant for magnitude before taking log.
+        power: Exponent for the magnitude spectrogram.
+
+    Returns:
+        The scalar loss value.
+    """
     if fft_sizes is None:
         fft_sizes = win_lengths
 
@@ -196,7 +352,7 @@ def mrstft_loss(
             hop_length=hop_lengths[i],
             n_fft=fft_sizes[i],
             window=window,
-            power=1,
+            power=power,
         )
 
         loss_total += time_frequency_loss(
@@ -215,6 +371,18 @@ def smooth_mrstft_loss(
     x: Float[Array, "*channels n_samples"],
     y: Float[Array, "*channels n_samples"],
 ) -> Float[Array, ""]:
+    """Implements the "smooth" multi-resolution STFT loss configuration specified in [1].
+
+    Args:
+        x: Input signal.
+        y: Target signal.
+
+    Returns:
+        The scalar loss value.
+
+    References:
+        [1] S. Schwär and M. Müller, "Multi-Scale Spectral Loss Revisited," IEEE Signal Processing Letters, vol. 30, pp. 1712-1716, 2023.
+    """
     return mrstft_loss(
         x,
         y,

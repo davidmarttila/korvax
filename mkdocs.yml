@@ -12,6 +12,7 @@ plugins:
           paths: [src]
           options:
             docstring_style: google
+            relative_crossrefs: True
             show_root_heading: True
-            heading_level: 3
             separate_signature: True
+            heading_level: 3

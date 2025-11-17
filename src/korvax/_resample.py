@@ -1,7 +1,3 @@
-"""
-JAX port of https://docs.pytorch.org/audio/main/generated/torchaudio.functional.resample.html
-"""
-
 import math
 import warnings
 import jax
@@ -132,7 +128,7 @@ def _apply_sinc_resample_kernel(
 
 
 def resample(
-    x: Float[Array, "*channels n_samples"],
+    x: Float[Array, "*channels old_n_samples"],
     /,
     orig_sr: int,
     target_sr: int,
@@ -144,9 +140,11 @@ def resample(
 ) -> Float[Array, "*channels new_n_samples"]:
     """Resample a waveform using sinc interpolation.
 
-    Direct JAX port of [`torchaudio.resample`](https://docs.pytorch.org/audio/main/generated/torchaudio.functional.resample.html)
+    This function is a JAX port of [`torchaudio.resample`](https://docs.pytorch.org/audio/main/generated/torchaudio.functional.resample.html).
+    When jitted, it is just as fast as [`soxr`](https://github.com/dofuuz/python-soxr) (HQ) on CPU,
+    but the JAX implementation is also fully differentiable and works on GPU/TPU.
 
-    Requires sampling rates to be specified as integers.
+    Note: Unlike the rest of korvax, this function requires sampling rates to be specified as integers.
 
     Args:
         x: The input signal of dimension `(..., time)`.
@@ -165,7 +163,7 @@ def resample(
             Defaults to ``14.7696...``.
 
     Returns:
-        jax.numpy.ndarray: The waveform at the new frequency, with shape `(..., new_time)`.
+        The waveform at the new frequency. The new shape is `(..., int(ceil(target_sr * old_n_samples / orig_sr)))`.
     """
     if orig_sr <= 0 or target_sr <= 0:
         raise ValueError("Original and new frequencies must be positive.")

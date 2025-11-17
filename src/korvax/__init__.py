@@ -17,7 +17,7 @@ from .convert import (
     power_to_db as power_to_db,
     db_to_power as db_to_power,
 )
-from .resample import resample as resample
+from ._resample import resample as resample
 
 
 from .transforms import (
