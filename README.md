@@ -14,7 +14,7 @@ Direct ports to JAX result in noticeable speedups across quite a few use cases -
 
 ## Installation
 
-Install it via pip:
+Prebuilt wheels are available on PyPI for Python 3.11+ on Linux and macOS:
 
 ```bash
 pip install korvax

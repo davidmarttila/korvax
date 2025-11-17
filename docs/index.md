@@ -12,7 +12,7 @@ JAX is a very powerful library for signal processing related tasks because of it
 
 ## Installation
 
-Install it via pip:
+Prebuilt wheels are available on PyPI for Python 3.11+ on Linux and macOS:
 
 ```bash
 pip install korvax
