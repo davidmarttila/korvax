@@ -11,8 +11,35 @@ import jax._src.scipy.signal
 from ._typing import _WindowSpec
 
 
-def is_array(x: Any) -> TypeGuard[Array | np.ndarray]:
-    return isinstance(x, (jax.Array, np.ndarray))
+def autocorrelate(
+    x: Float[ArrayLike, "..."],
+    /,
+    max_size: int | None = None,
+    axis: int = -1,
+) -> Float[Array, "..."]:
+    """Compute the autocorrelation of the input array along the specified axis.
+
+    Args:
+        x: Input array.
+        max_size: Maximum size of the autocorrelation lags. If `None`, uses the full size.
+        axis: Axis along which to compute the autocorrelation. Default: `-1`.
+
+    Returns:
+        Autocorrelated array.
+    """
+    x = jnp.asarray(x)
+    x = x.swapaxes(-1, axis)
+    n_samples = x.shape[-1]
+    if max_size is None:
+        max_size = n_samples
+
+    with jax.ensure_compile_time_eval():
+        n_fft = 2 ** int(jnp.ceil(jnp.log2(2 * (n_samples - 1))))
+
+    X_f = jnp.fft.rfft(x, n=n_fft, axis=-1)
+    S_f = jnp.conj(X_f) * X_f
+    acf = jnp.fft.irfft(S_f, n=n_fft, axis=-1)
+    return acf[..., :max_size].swapaxes(-1, axis)
 
 
 def frame(
@@ -49,7 +76,7 @@ def overlap_and_add(
     """Construct a signal from overlapping frames with overlap-and-add.
 
     Args:
-        x: Input array containing overlapping frames.
+        x: Input array containing overlappinig frames.
         hop_length: Number of samples between adjacent frame starts.
 
     Returns:
@@ -69,7 +96,7 @@ def pad_center(
     Args:
         x: Input array.
         size: Desired size of the last axis after padding.
-        **pad_kwargs: Additional keyword arguments forwarded to [`jax.numpy.pad`](https://docs.jax.dev/en/latest/_autosummary/jax.numpy.pad.html).
+        pad_kwargs: Additional keyword arguments forwarded to [`jax.numpy.pad`](https://docs.jax.dev/en/latest/_autosummary/jax.numpy.pad.html).
 
     Returns:
         Array with the last axis center-padded to the desired size.
@@ -137,7 +164,27 @@ def get_window(
         return jnp.asarray(win, dtype=dtype)
 
 
+def is_array(x: Any) -> TypeGuard[Array | np.ndarray]:
+    """Check if the input is a JAX or NumPy array.
+
+    Args:
+        x: Input value to check.
+
+    Returns:
+        True if the input is a JAX or NumPy array, False otherwise.
+    """
+    return isinstance(x, (jax.Array, np.ndarray))
+
+
 def feps(x: Inexact[ArrayLike, "..."]) -> float:
+    """Get the machine epsilon for the data type of the input array.
+
+    Args:
+        x: Input array.
+
+    Returns:
+        Machine epsilon as a float.
+    """
     return float(jnp.finfo(jnp.result_type(x)).eps)
 
 
@@ -148,6 +195,19 @@ def normalize(
     axis: int | tuple[int, ...] | None = None,
     threshold: float | None = None,
 ) -> Float[Array, "*dims"]:
+    """Normalize an array by its norm along the specified axis.
+
+    Args:
+        x: Input array.
+        ord: Order of the norm. See `jax.numpy.linalg.norm` for options.
+        axis: Axis or axes along which to compute the norm. If None, normalizes
+            over all axes.
+        threshold: Minimum norm value below which normalization is skipped.
+            If None, uses machine epsilon.
+
+    Returns:
+        Normalized array.
+    """
     if threshold is None:
         threshold = feps(x)
 
@@ -156,37 +216,6 @@ def normalize(
     norm = jnp.linalg.norm(x, ord=ord, axis=axis, keepdims=True)
     norm = jnp.where(norm < threshold, 1.0, norm)
     return x / norm  # pyright: ignore[reportOperatorIssue]
-
-
-def autocorrelate(
-    x: Float[ArrayLike, "..."],
-    /,
-    max_size: int | None = None,
-    axis: int = -1,
-) -> Float[Array, "..."]:
-    """Compute the autocorrelation of the input array along the specified axis.
-
-    Args:
-        x: Input array.
-        max_size: Maximum size of the autocorrelation lags. If `None`, uses the full size.
-        axis: Axis along which to compute the autocorrelation. Default: `-1`.
-
-    Returns:
-        Autocorrelated array.
-    """
-    x = jnp.asarray(x)
-    x = x.swapaxes(-1, axis)
-    n_samples = x.shape[-1]
-    if max_size is None:
-        max_size = n_samples
-
-    with jax.ensure_compile_time_eval():
-        n_fft = 2 ** int(jnp.ceil(jnp.log2(2 * (n_samples - 1))))
-
-    X_f = jnp.fft.rfft(x, n=n_fft, axis=-1)
-    S_f = jnp.conj(X_f) * X_f
-    acf = jnp.fft.irfft(S_f, n=n_fft, axis=-1)
-    return acf[..., :max_size].swapaxes(-1, axis)
 
 
 def expand_to(
@@ -216,6 +245,16 @@ def expand_to(
 def parabolic_peak_shifts(
     x: Float[Array, "*dims"], /, axis: int
 ) -> Float[Array, "*dims"]:
+    """Compute subpixel peak positions using parabolic interpolation.
+
+    Args:
+        x: Input array containing peaks.
+        axis: Axis along which to compute peak shifts.
+
+    Returns:
+        Array of fractional shifts for each position, where each shift indicates
+        the subpixel offset from the integer position to the interpolated peak.
+    """
     x = x.swapaxes(-1, axis)
     left_vals = x[..., :-2]
     center_vals = x[..., 1:-1]
@@ -232,6 +271,15 @@ def parabolic_peak_shifts(
 
 
 def localmin(x: Float[Array, "*dims"], /, axis: int) -> Bool[Array, "*dims"]:
+    """Identify local minima in an array along the specified axis.
+
+    Args:
+        x: Input array.
+        axis: Axis along which to find local minima.
+
+    Returns:
+        Boolean array where True indicates a local minimum.
+    """
     x = x.swapaxes(-1, axis)
     left_vals = x[..., :-2]
     center_vals = x[..., 1:-1]
