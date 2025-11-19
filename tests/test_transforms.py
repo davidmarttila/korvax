@@ -7,6 +7,10 @@ import korvax
 import numpy as np
 import jax
 
+import korvax.transforms._cqt as kcqt
+import nnAudio
+import nnAudio.utils
+
 data_dir = Path("tests/data/")
 
 
@@ -225,3 +229,45 @@ def test_mfcc(S, norm, n_mfcc, lifter):
         assert jnp.var(mfcc_kvx[0] / E_total) <= 1e-29
 
         assert jnp.allclose(mfcc_kvx, mfcc_lib)
+
+
+@pytest.mark.parametrize("Q", [0.1, 1.0, 2.0])
+@pytest.mark.parametrize("n_bins", [12, 36, 84])
+@pytest.mark.parametrize("bins_per_octave", [12, 24])
+@pytest.mark.parametrize("fmax", [None, 8000.0])
+def test_create_cqt_kernels(Q, n_bins, bins_per_octave, fmax):
+    sr = 16000.0
+    fmin = 32.7032
+    norm = 1
+    window = "hann"
+    topbin_check = True
+    gamma = 0.0
+    dtype = jnp.float32
+
+    kernels, lengths, freqs = kcqt.create_cqt_kernels(
+        Q=Q,
+        sr=sr,
+        fmin=fmin,
+        n_bins=n_bins,
+        bins_per_octave=bins_per_octave,
+        norm=norm,
+        window=window,
+        fmax=fmax,
+        topbin_check=topbin_check,
+        gamma=gamma,
+        dtype=dtype,
+    )
+
+    ref_kernels, _, ref_lengths, ref_freqs = nnAudio.utils.create_cqt_kernels(
+        Q=Q,
+        fs=sr,
+        fmin=fmin,
+        n_bins=n_bins,
+        bins_per_octave=bins_per_octave,
+        norm=norm,
+        window=window,
+        fmax=fmax,
+        gamma=gamma,  # pyright: ignore[reportArgumentType]
+    )
+
+    assert jnp.allclose(kernels, jnp.asarray(ref_kernels), atol=1e-5)
