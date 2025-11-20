@@ -1,3 +1,5 @@
+from functools import partial
+import torch
 import pytest
 from pathlib import Path
 import librosa
@@ -7,7 +9,17 @@ import korvax
 import numpy as np
 import jax
 
+import korvax.transforms._cqt as kcqt
+import nnAudio
+import nnAudio.utils
+import nnAudio.features
+
 data_dir = Path("tests/data/")
+
+
+@pytest.fixture
+def x():
+    return jax.random.normal(jax.random.key(0), (5, 16000))
 
 
 def files(pattern: str) -> list[Path]:
@@ -225,3 +237,83 @@ def test_mfcc(S, norm, n_mfcc, lifter):
         assert jnp.var(mfcc_kvx[0] / E_total) <= 1e-29
 
         assert jnp.allclose(mfcc_kvx, mfcc_lib)
+
+
+@pytest.mark.parametrize("Q", [0.1, 1.0, 2.0])
+@pytest.mark.parametrize("n_bins", [12, 36])
+@pytest.mark.parametrize("bins_per_octave", [12, 24])
+@pytest.mark.parametrize("fmax", [None, 8000.0])
+@pytest.mark.parametrize("gamma", [0.0, 1.0])
+def test_create_vqt_kernels(Q, n_bins, bins_per_octave, fmax, gamma):
+    sr = 16000.0
+    fmin = 300.0
+    norm = 1
+    window = "hann"
+    topbin_check = True
+
+    kernels, lengths, freqs = kcqt.create_vqt_kernels(
+        Q=Q,
+        sr=sr,
+        fmin=fmin,
+        n_bins=n_bins,
+        bins_per_octave=bins_per_octave,
+        norm=norm,
+        window=window,
+        fmax=fmax,
+        topbin_check=topbin_check,
+        gamma=gamma,
+        dtype=jnp.float32,
+    )
+
+    ref_kernels, _, ref_lengths, ref_freqs = nnAudio.utils.create_cqt_kernels(
+        Q=Q,
+        fs=sr,
+        fmin=fmin,
+        n_bins=n_bins,
+        bins_per_octave=bins_per_octave,
+        norm=norm,
+        window=window,
+        fmax=fmax,
+        gamma=gamma,  # pyright: ignore[reportArgumentType]
+    )
+
+    assert jnp.allclose(kernels, jnp.asarray(ref_kernels), atol=1e-5)
+
+
+@pytest.mark.parametrize("filter_scale", [0.1, 1.0, 2.0])
+def test_vqt(x, filter_scale):
+    sr = 16000.0
+    fmin = 300.0
+    norm = 1
+    window = "hann"
+
+    out = jax.vmap(
+        partial(
+            kcqt.vqt,
+            sr=sr,
+            filter_scale=filter_scale,
+            fmin=fmin,
+            n_bins=24,
+            norm_kernels=norm,
+            window=window,
+            power=1.0,
+        )
+    )(x)
+
+    t_cqt = nnAudio.features.CQT1992v2(
+        sr=int(sr),
+        fmin=fmin,
+        n_bins=24,
+        bins_per_octave=12,
+        filter_scale=filter_scale,
+        norm=norm,
+        window=window,
+        output_format="Magnitude",
+        verbose=False,
+        pad_mode="constant",
+    )
+
+    ref_out = t_cqt(torch.tensor(np.asarray(x)))
+
+    assert out.shape == jnp.asarray(ref_out).shape
+    assert jnp.allclose(out, jnp.asarray(ref_out), atol=1e-4)
