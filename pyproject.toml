@@ -8,10 +8,7 @@ license = "MIT"
 license-files = ["LICENSE", "LICENSE-3RD-PARTY"]
 authors = [{ name = "David Marttila", email = "david.suedholt@gmail.com" }]
 requires-python = ">=3.11"
-dependencies = [
-    "jax>=0.6.2",
-    "jaxtyping>=0.3.3",
-]
+dependencies = ["jax>=0.6.2", "jaxtyping>=0.3.3"]
 
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -29,7 +26,8 @@ cuda13 = ["jax[cuda13] ; sys_platform == 'linux'"]
 
 
 [build-system]
-requires = ["scikit-build-core", "nanobind", "jax"]
+# fix jax version, 0.8.1 builds FFI functions with api version 0.2
+requires = ["scikit-build-core", "nanobind", "jax==0.8.0"]
 build-backend = "scikit_build_core.build"
 
 [tool.scikit-build]
