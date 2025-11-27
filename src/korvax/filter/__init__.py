@@ -1,6 +1,6 @@
 import jax
 from ._allpole import allpole as allpole
-from ._lfilter import lfilter as lfilter
+from ._lfilter import lfilter as lfilter, sosfilt as sosfilt
 from . import _filter_cpu
 
 try:

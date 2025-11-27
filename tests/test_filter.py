@@ -10,7 +10,7 @@ from torchaudio.functional import lfilter as torch_lfilter
 import korvax
 
 from korvax.filter import lfilter as korvax_lfilter
-from scipy.signal import lfilter as scipy_lfilter
+import scipy.signal
 
 
 @pytest.fixture
@@ -30,7 +30,7 @@ def b():
 
 def test_lfilter_output(b, a, x):
     y_korvax = jax.vmap(korvax_lfilter, in_axes=(0, None, None))(x, a, b)
-    y_scipy = scipy_lfilter(
+    y_scipy = scipy.signal.lfilter(
         np.array(b, dtype=np.float32),
         np.array(a, dtype=np.float32),
         np.array(x, dtype=np.float32),
@@ -69,6 +69,22 @@ def test_lfilter_grads(b, a, x):
 
     assert jnp.allclose(korvax_grads[0], jnp.asarray(torch_grads[0]), atol=1e-5)
     assert jnp.allclose(korvax_grads[1], jnp.asarray(torch_grads[1]), atol=1e-5)
+
+
+def test_sosfilt_output(x, a, b):
+    a = a[:3]
+    b = b[:3]
+    n_filt = 3
+
+    a = jnp.tile(a[None, :], (n_filt, 1))
+    b = jnp.tile(b[None, :], (n_filt, 1))
+
+    np_sos = np.array(jnp.concatenate([b, a], axis=-1))
+
+    y_korvax = jax.vmap(korvax.filter.sosfilt, in_axes=(0, None, None))(x, a, b)
+    y_scipy = scipy.signal.sosfilt(np_sos, np.array(x))
+
+    assert jnp.allclose(y_korvax, y_scipy, atol=1e-5)
 
 
 @pytest.mark.parametrize("order", [1, 2, 4, 6])

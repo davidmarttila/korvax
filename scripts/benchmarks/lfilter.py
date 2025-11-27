@@ -12,7 +12,7 @@ from korvax.filter import lfilter as korvax_lfilter
 from torchaudio.functional import lfilter as torch_lfilter
 
 # torch_lfilter = torch.compile(torch_lfilter)
-phil_lfilter = torch.compile(phil_lfilter, backend="diag_ssm")
+phil_lfilter = torch.compile(phil_lfilter)
 
 
 @jax.jit
