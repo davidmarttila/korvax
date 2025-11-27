@@ -45,6 +45,7 @@ test = [
     "beartype>=0.22.5",
     "jaxpole>=0.0.3",
     "librosa>=0.11.0",
+    "philtorch>=0.1",
     "pytest>=8.4.2",
     "pytest-cov>=7.0.0",
     "sot-loss>=0.1.3",
