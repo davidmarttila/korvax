@@ -1,3 +1,4 @@
+from functools import partial
 import pytest
 import jax
 import jax.numpy as jnp
@@ -11,6 +12,7 @@ import korvax
 
 from korvax.filter import lfilter as korvax_lfilter
 import scipy.signal
+import philtorch.lti
 
 
 @pytest.fixture
@@ -28,18 +30,20 @@ def b():
     return jnp.array([0.3, 0.1, 0.2, 0.4])
 
 
-def test_lfilter_output(b, a, x):
-    y_korvax = jax.vmap(korvax_lfilter, in_axes=(0, None, None))(x, a, b)
+@pytest.mark.parametrize("transposed", [True, False])
+def test_lfilter_output(b, a, x, transposed):
+    fn = partial(korvax_lfilter, a=a, b=b, transposed=transposed)
+
+    y_korvax = jax.vmap(fn)(x=x)
     y_scipy = scipy.signal.lfilter(
         np.array(b, dtype=np.float32),
         np.array(a, dtype=np.float32),
         np.array(x, dtype=np.float32),
     )
-    y_torch = torch_lfilter(
-        torch.tensor(x, dtype=torch.float32),
-        torch.tensor(a, dtype=torch.float32),
-        torch.tensor(b, dtype=torch.float32),
-        clamp=False,
+    y_torch = philtorch.lti.lfilter(
+        x=torch.tensor(x, dtype=torch.float32),
+        a=torch.tensor(a[1:], dtype=torch.float32),
+        b=torch.tensor(b, dtype=torch.float32),
     ).numpy()
 
     assert jnp.allclose(y_korvax, jnp.array(y_scipy), atol=1e-5)
