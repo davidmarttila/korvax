@@ -1,40 +1,10 @@
 from typing import overload, Literal
 
-import jax.lax as lax
+import jax
 import jax.numpy as jnp
-
+import jax.lax as lax
 
 from jaxtyping import Float, Array
-
-
-def _companion(a):
-    M = a.shape[-1]
-    C = jnp.zeros((M, M), dtype=a.dtype)
-    C = C.at[jnp.arange(1, M), jnp.arange(M - 1)].set(1.0)
-    C = C.at[0, :].set(-a)
-    return C
-
-
-def _state_space_assoc_scan_jax(A, z, v0):
-    order = A.shape[-1]
-
-    As = jnp.concatenate(
-        [
-            jnp.zeros((1, order, order)),
-            jnp.tile(A[None, :, :], (z.shape[0], 1, 1)),
-        ],
-        axis=0,
-    )
-
-    z = jnp.concatenate([v0[None, :], z], axis=0)
-
-    def assoc_op(t1, t2):
-        a1, z1 = t1
-        a2, z2 = t2
-        return a2 @ a1, jnp.matvec(a2, z1) + z2
-
-    _, v = lax.associative_scan(assoc_op, (As, z))
-    return v
 
 
 def _interleave(a, b):
@@ -48,7 +18,8 @@ def _interleave(a, b):
     )
 
 
-def _lti_state_space_assoc_scan(A, z, v0):
+@jax.custom_vjp
+def _recurrence(A, z):
     def _scan(elems, A_):
         num_elems = elems.shape[0]
         if num_elems < 2:
@@ -65,15 +36,41 @@ def _lti_state_space_assoc_scan(A, z, v0):
         even_elems = jnp.concatenate([elems[0:1, ...], even_elems], axis=0)
         return _interleave(even_elems, odd_elems)
 
-    z = jnp.concatenate([v0[None, :], z], axis=0)
     return _scan(z, A)
+
+
+def _recurrence_fwd(A, z):
+    v = _recurrence(A, z)
+    return v, (A, v)
+
+
+def _recurrence_bwd(res, g):
+    A, v = res
+
+    A = A.T.conj()
+
+    grad_z = jnp.flip(_recurrence(A, jnp.flip(g, axis=0)), axis=0)
+    grad_A = grad_z[1:, ...].T @ v[:-1, ...].conj()
+
+    return grad_A, grad_z
+
+
+_recurrence.defvjp(_recurrence_fwd, _recurrence_bwd)
+
+
+def _companion(a):
+    M = a.shape[-1]
+    C = jnp.zeros((M, M), dtype=a.dtype)
+    C = C.at[jnp.arange(1, M), jnp.arange(M - 1)].set(1.0)
+    C = C.at[0, :].set(-a)
+    return C
 
 
 @overload
 def lfilter(
     x: Float[Array, " n_samples"],
-    a: Float[Array, " n_a"],
-    b: Float[Array, " n_b"],
+    a: Float[Array, " n_a"] | None = None,
+    b: Float[Array, " n_b"] | None = None,
     zi: Float[Array, " order"] | None = None,
     *,
     return_zi: Literal[False] = False,
@@ -84,8 +81,8 @@ def lfilter(
 @overload
 def lfilter(
     x: Float[Array, " n_samples"],
-    a: Float[Array, " n_a"],
-    b: Float[Array, " n_b"],
+    a: Float[Array, " n_a"] | None = None,
+    b: Float[Array, " n_b"] | None = None,
     zi: Float[Array, " order"] | None = None,
     *,
     return_zi: Literal[True],
@@ -95,8 +92,8 @@ def lfilter(
 
 def lfilter(
     x: Float[Array, " n_samples"],
-    a: Float[Array, " n_a"],
-    b: Float[Array, " n_b"],
+    a: Float[Array, " n_a"] | None = None,
+    b: Float[Array, " n_b"] | None = None,
     zi: Float[Array, " order"] | None = None,
     *,
     return_zi: bool = False,
@@ -114,8 +111,8 @@ def lfilter(
 
     Args:
         x: Input signal of shape `(n_samples,)`.
-        a: Denominator (IIR) coefficients of shape `(n_a,)`.
-        b: Numerator (FIR) coefficients of shape `(n_b,)`.
+        a: Denominator (IIR) coefficients `a_1, a_2, ...` of shape `(n_a)`. `a_0 = 1` is implied. Can be `None` for all-zero filters.
+        b: Numerator (FIR) coefficients `b_0, b_1, ...` of shape `(n_b)`. Can be `None` for all-pole filters.
         zi: Initial conditions of shape `(order,)`, where `order=max(n_a, n_b) - 1`. If `None`, zeros are used.
         return_zi: If `True`, return the final conditions along with the output.
         transposed: Whether to use transposed direct form II structure (default). Uses direct form II otherwise.
@@ -126,24 +123,29 @@ def lfilter(
             - Filtered signal of shape `(n_samples,)`
             - Final conditions of shape `(order,)`, where `order=max(n_a, n_b) - 1`.
     """
-    b = b / a[0]
-    a = a / a[0]
+    if a is None:
+        a = jnp.array([], dtype=x.dtype)
 
-    order = max(a.shape[-1], b.shape[-1]) - 1
+    if b is None:
+        b = jnp.array([1.0], dtype=x.dtype)
+
+    order = max(a.shape[-1], b.shape[-1] - 1)
 
     if zi is None:
         zi = jnp.zeros((order,), dtype=x.dtype)
     else:
         assert zi.shape == (order,)
 
+    assert zi is not None
+
     if b.shape[-1] < order + 1:
         b = jnp.pad(b, (0, order + 1 - b.shape[-1]))
-    if a.shape[-1] < order + 1:
-        a = jnp.pad(a, (0, order + 1 - a.shape[-1]))
+    if a.shape[-1] < order:
+        a = jnp.pad(a, (0, order - a.shape[-1]))
 
-    A = _companion(a[1:])
+    A = _companion(a)
     b0 = b[:1]
-    C = b[1:] - a[1:] * b0
+    C = b[1:] - a * b0
     D = b[0]
 
     if transposed:
@@ -153,7 +155,7 @@ def lfilter(
     else:
         z = jnp.pad(x[:, None], ((0, 0), (0, order - 1)))
 
-    v = _lti_state_space_assoc_scan(A, z, zi)
+    v = _recurrence(A, jnp.concatenate([zi[None, :], z], axis=0))
 
     if transposed:
         y = v[:-1, 0] + D * x
@@ -166,9 +168,31 @@ def lfilter(
         return y
 
 
+@overload
 def sosfilt(
     x: Float[Array, " n_samples"],
-    a: Float[Array, " n_sections 3"],
+    a: Float[Array, " n_sections 2"],
+    b: Float[Array, " n_sections 3"],
+    zi: Float[Array, " n_sections 2"] | None = None,
+    *,
+    return_zi: Literal[False] = False,
+) -> Float[Array, " n_samples"]: ...
+
+
+@overload
+def sosfilt(
+    x: Float[Array, " n_samples"],
+    a: Float[Array, " n_sections 2"],
+    b: Float[Array, " n_sections 3"],
+    zi: Float[Array, " n_sections 2"] | None = None,
+    *,
+    return_zi: Literal[True],
+) -> tuple[Float[Array, " n_samples"], Float[Array, " n_sections 2"]]: ...
+
+
+def sosfilt(
+    x: Float[Array, " n_samples"],
+    a: Float[Array, " n_sections 2"],
     b: Float[Array, " n_sections 3"],
     zi: Float[Array, " n_sections 2"] | None = None,
     *,
@@ -184,7 +208,7 @@ def sosfilt(
 
     Args:
         x: Input signal of shape `(n_samples,)`.
-        a: Denominator (IIR) coefficients of shape `(n_sections, 3)`.
+        a: Denominator (IIR) coefficients of shape `(n_sections, 2)`.
         b: Numerator (FIR) coefficients of shape `(n_sections, 3)`.
         zi: Initial conditions of shape `(n_sections, 2)`. If `None`, zeros are used.
         return_zi: If `True`, return the final conditions along with the output.

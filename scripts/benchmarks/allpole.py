@@ -15,7 +15,7 @@ sample_wise_lpc = torch.compile(sample_wise_lpc)
 @jax.jit
 def jax_grad(x, a):
     def loss_fn(x, a):
-        y = jax.vmap(korvax.filter.allpole)(x, a)
+        y = jax.vmap(korvax.filter.ltv.allpole)(x, a)
         return jnp.mean(y**2)
 
     grad = jax.grad(loss_fn, argnums=1)(x, a)
@@ -25,7 +25,7 @@ def jax_grad(x, a):
 @torch.compile
 def torch_grad(x, a):
     y = sample_wise_lpc(x, a)
-    loss = torch.mean(y**2)
+    loss = torch.mean(y**2)  # pyright: ignore[reportOperatorIssue]
     loss.backward()
 
 
@@ -53,7 +53,7 @@ def run_jax_grad_benchmark(runs, batch_size, length, order, key):
 
 @jax.jit
 def jax_value(x, a):
-    return jax.vmap(korvax.filter.allpole)(x, a)
+    return jax.vmap(korvax.filter.ltv.allpole)(x, a)
 
 
 def run_jax_benchmark(runs, batch_size, length, order, key):

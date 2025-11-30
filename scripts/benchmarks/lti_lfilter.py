@@ -8,7 +8,7 @@ from time import time
 
 from philtorch.lti import lfilter as phil_lfilter
 
-from korvax.filter import lfilter as korvax_lfilter
+from korvax.filter.lti import lfilter as korvax_lfilter
 from torchaudio.functional import lfilter as torch_lfilter
 
 # torch_lfilter = torch.compile(torch_lfilter)
@@ -35,13 +35,13 @@ def torch_grad(x, a, b):
 @torch.compile
 def phil_grad(x, a, b):
     y = phil_lfilter(b, a, x)
-    loss = torch.mean(y**2)
+    loss = torch.mean(y**2)  # pyright: ignore[reportOperatorIssue]
     loss.backward()
 
 
 def jax_make_inputs(batch_size, length, order, key):
     k1, k2 = jax.random.split(key)
-    a = jax.random.normal(key=k1, shape=(batch_size, order)) * 0.1
+    a = jax.random.normal(key=k1, shape=(batch_size, order - 1)) * 0.1
     b = jax.random.normal(key=k2, shape=(batch_size, order)) * 0.1
     x = jax.random.normal(key=k2, shape=(batch_size, length))
     return x.block_until_ready(), a.block_until_ready(), b.block_until_ready()
@@ -135,13 +135,13 @@ def run_torch_grad_benchmark(runs, batch_size, length, order, device):
 
 
 def run_phil_benchmark(runs, batch_size, length, order, device):
-    a = torch.randn(size=(batch_size, order), device=device)
+    a = torch.randn(size=(batch_size, order - 1), device=device)
     b = torch.randn(size=(batch_size, order), device=device)
     x = torch.randn(size=(batch_size, length), device=device)
     out = phil_lfilter(b * 0.1, a * 0.1, x)  # noqa
     acc = 0
     for _ in range(runs):
-        a = torch.randn(size=(batch_size, order), device=device)
+        a = torch.randn(size=(batch_size, order - 1), device=device)
         b = torch.randn(size=(batch_size, order), device=device)
         a_ = a * 0.1
         b_ = b * 0.1
@@ -158,7 +158,7 @@ def run_phil_benchmark(runs, batch_size, length, order, device):
 
 
 def run_phil_grad_benchmark(runs, batch_size, length, order, device):
-    a = torch.randn(size=(batch_size, order), device=device, requires_grad=True)
+    a = torch.randn(size=(batch_size, order - 1), device=device, requires_grad=True)
     b = torch.randn(size=(batch_size, order), device=device, requires_grad=True) * 0.1
     x = torch.randn(size=(batch_size, length), device=device)
     phil_grad(x, a, b)
@@ -166,7 +166,7 @@ def run_phil_grad_benchmark(runs, batch_size, length, order, device):
 
     acc = 0
     for _ in range(runs):
-        a = torch.randn(size=(batch_size, order), device=device, requires_grad=True)
+        a = torch.randn(size=(batch_size, order - 1), device=device, requires_grad=True)
         b = torch.randn(size=(batch_size, order), device=device, requires_grad=True)
         a_ = a * 0.1
         b_ = b * 0.1
