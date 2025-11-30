@@ -32,7 +32,7 @@ Currently, Korvax provides:
 
 - Time-frequency loss functions (MR-STFT, Spectral Optimal Transport)
 - Pitch estimation algorithms
-- Time-varying all-pole filtering
+- Efficient time-domain filtering with constant and time-varying coefficients
 - Resampling
 - Transforms (STFT, Mel spectrogram, MFCCs, etc.)
 

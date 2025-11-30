@@ -104,7 +104,7 @@ def lfilter(
 ):
     """Apply a time-invariant filter to the input signal.
 
-    Filter is implemented in TDF2 structure. Coefficients will be zero padded to have the same length and will be normalized such that `a[0] = 1`.
+    Filtering is implemented using the state-space implementations with parallel associative scans as described in [1]. In the time-invariant case, this is also efficient at higher filter orders.
 
     This function only operates on 1D signals, use `jax.vmap` to apply it to batched inputs.
 
@@ -122,6 +122,9 @@ def lfilter(
 
             - Filtered signal of shape `(n_samples,)`
             - Final conditions of shape `(order,)`, where `order=max(n_a, n_b) - 1`.
+
+    References:
+        [1] C.-Y. Yu and G. Fazekas. "Accelerating Automatic Differentiation of Direct Form Digital Filters", DiffSys Workshap at EurIPS, 2025.
     """
     if a is None:
         a = jnp.array([], dtype=x.dtype)

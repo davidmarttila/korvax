@@ -93,10 +93,10 @@ def lfilter(
     tuple[Float[Array, " n_samples"], Float[Array, " order"]]
     | Float[Array, " n_samples"]
 ):
-    """Apply a time-invariant filter to the input signal.
+    """Apply a linear filter with time-varying coefficients to the input signal.
 
     Filtering is implemented using the state-space implementations with parallel associative scans as described in [1].
-    No diagonalization is implemented currently! For filters with order > ~4, combining [korvax.filter.lpv.fir] and [korvax.filter.lpv.allpole] will likely be a lot more performant.
+    No diagonalization is implemented currently! For time-varying filters with order > ~4, combining [`ltv.fir`][korvax.filter.ltv.fir] and [`ltv.allpole`][korvax.filter.ltv.allpole] will likely be a lot more performant.
 
     This function only operates on 1D signals, use `jax.vmap` to apply it to batched inputs.
 
@@ -198,7 +198,7 @@ def sosfilt(
     tuple[Float[Array, " n_samples"], Float[Array, " n_sections 2"]]
     | Float[Array, " n_samples"]
 ):
-    """Apply a cascade of time-invariant second-order filters (biquads) to the input signal.
+    """Apply a cascade of second-order filters (biquads) with time-varying coefficients to the input signal.
 
     This function only operates on 1D signals, use `jax.vmap` to apply it to batched inputs.
 
@@ -238,7 +238,7 @@ def fir(
     b: Float[Array, " n_samples n_b"],
     zi: Float[Array, " n_b-1"] | None = None,
 ) -> Float[Array, " n_samples"]:
-    """Apply a time-varying FIR filter to the input signal.
+    """Apply a linear FIR filter with time-varying coefficients to the input signal.
 
     This function only operates on 1D signals, use `jax.vmap` to apply it to batched inputs.
 

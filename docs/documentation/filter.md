@@ -1,22 +1,23 @@
 # Time-Domain Filtering
 
-Time-domain filtering functions. 
+Time-domain filtering functions that run efficiently on CPU and GPU, and are differentiable in all arguments. The implementations are strongly based on [`philtorch`](https://github.com/yoyolicoris/philtorch/) and [`torchlpc`](https://github.com/DiffAPF/torchlpc/).
 
 ## Time-Invariant Filtering
 
 Functions that apply linear time-invariant (LTI) filters to time-domain signals. Filter coefficients are constant over time.
 
-::: korvax.filter.lfilter
+::: korvax.filter.lti.lfilter
 
-::: korvax.filter.sosfilt
+::: korvax.filter.lti.sosfilt
 
 ## Time-Varying Filtering
 
-Functions that apply time-varying filters to time-domain signals. Filter coefficients can change at audio sample rate.
+Functions that apply linear time-varying (LTV) filters to time-domain signals. Filter coefficients can change at audio sample rate.
 
-The actual filtering is implemented in C++ kernels
-and called via JAX's FFI interface. If a GPU is available, a CUDA kernel will be used.
+::: korvax.filter.ltv.lfilter
 
-The implementations are strongly based on [`philtorch`](https://github.com/yoyolicoris/philtorch/) and [`torchlpc`](https://github.com/DiffAPF/torchlpc/).
+::: korvax.filter.ltv.sosfilt
 
-::: korvax.filter.allpole
+::: korvax.filter.ltv.fir
+
+::: korvax.filter.ltv.allpole
