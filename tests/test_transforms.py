@@ -287,16 +287,19 @@ def test_vqt(x, filter_scale):
     norm = 1
     window = "hann"
 
-    out = jax.vmap(
-        partial(
-            kcqt.vqt,
-            sr=sr,
-            filter_scale=filter_scale,
-            fmin=fmin,
-            n_bins=24,
-            norm_kernels=norm,
-            window=window,
-            power=1.0,
+    # make sure function works under jit
+    out = jax.jit(
+        jax.vmap(
+            partial(
+                kcqt.vqt,
+                sr=sr,
+                filter_scale=filter_scale,
+                fmin=fmin,
+                n_bins=24,
+                norm_kernels=norm,
+                window=window,
+                power=1.0,
+            )
         )
     )(x)
 

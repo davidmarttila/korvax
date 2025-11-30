@@ -24,6 +24,25 @@ def create_vqt_kernels(
     Integer[Array, " n_bins"],
     Float[Array, " n_bins"],
 ]:
+    """Create Variable-Q Transform (VQT) filter kernels.
+
+    Args:
+        Q: Q-factor for filter bandwidth. Higher values give finer frequency resolution.
+        sr: Sample rate of the input signal.
+        fmin: Minimum frequency (Hz).
+        n_bins: Number of frequency bins. Ignored if `fmax` is provided.
+        bins_per_octave: Number of bins per octave.
+        norm: Normalization mode for the filters (p-norm to use).
+        window: Window specification (see [get_window][korvax.util.get_window]).
+        fmax: Maximum frequency (Hz). If provided, `n_bins` is calculated automatically.
+        topbin_check: If True, raise an error if the highest frequency exceeds Nyquist.
+        gamma: Bandwidth offset parameter for variable-Q transform.
+        dtype: Data type for frequency array. If None, uses default dtype.
+
+    Returns:
+        Tuple of (kernels, lengths, freqs) where kernels are the complex filter banks,
+        lengths are the individual filter lengths, and freqs are the center frequencies.
+    """
     if fmax is not None and n_bins is None:
         n_bins = (
             jnp.ceil(bins_per_octave * jnp.log2(fmax / fmin)).astype(int).item()
@@ -106,6 +125,12 @@ def cqt(
     normalization_type: Literal["librosa", "convolutional", "wrap"] = "librosa",
     pad_kwargs=dict(),
 ) -> Inexact[Array, " n_bins n_frames"]:
+    """Compute the Constant-Q Transform (CQT) of a time-domain signal.
+
+    The CQT is a time-frequency representation with logarithmically-spaced frequency bins,
+    making it well-suited for music analysis. This is a convenience wrapper that calls
+    [vqt][korvax.transforms.vqt] with gamma=0.
+    """
     return vqt(
         x,
         sr=sr,
@@ -143,6 +168,32 @@ def vqt(
     normalization_type: Literal["librosa", "convolutional", "wrap"] = "librosa",
     pad_kwargs=dict(),
 ) -> Float[Array, " n_bins n_frames"]:
+    """Compute the Variable-Q Transform (VQT) of a time-domain signal.
+
+    The VQT is a generalization of the Constant-Q Transform (CQT) that allows for variable
+    bandwidth via the gamma parameter. When gamma=0, this is equivalent to the CQT.
+
+    Args:
+        x: Input signal.
+        sr: Sample rate of the input signal.
+        hop_length: Hop (step) length between adjacent frames.
+        fmin: Minimum frequency (Hz).
+        fmax: Maximum frequency (Hz). If None, determined by `n_bins`.
+        n_bins: Number of frequency bins. Ignored if `fmax` is provided.
+        gamma: Bandwidth offset parameter. When gamma=0, this reduces to CQT.
+        bins_per_octave: Number of bins per octave.
+        filter_scale: Scale factor for filter bandwidths.
+        norm_kernels: Normalization mode for the filter kernels (p-norm to use).
+        power: Exponent for the magnitude spectrogram. If 2.0, returns power spectrogram.
+            If None, returns complex VQT coefficients.
+        window: Window specification (see [get_window][korvax.util.get_window]).
+        center: If True, pad the input so that frames are centered on their timestamps.
+        normalization_type: Type of normalization to apply ("librosa", "convolutional", or "wrap").
+        pad_kwargs: Additional keyword arguments forwarded to [pad_center][korvax.util.pad_center].
+
+    Returns:
+        VQT coefficients.
+    """
     with jax.ensure_compile_time_eval():
         Q = float(filter_scale) / (2 ** (1 / bins_per_octave) - 1)
         vqt_kernels, lengths, _ = create_vqt_kernels(

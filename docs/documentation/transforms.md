@@ -14,6 +14,10 @@ Functions that take in time-domain signals and output time-frequency representat
 
 ::: korvax.mfcc
 
+::: korvax.cqt
+
+::: korvax.vqt
+
 ## Inverse Transforms
 
 Functions that take in time-frequency representations and output time-domain signals.

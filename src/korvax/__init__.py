@@ -30,6 +30,8 @@ from .transforms import (
     to_mel_scale as to_mel_scale,
     mfcc as mfcc,
     griffin_lim as griffin_lim,
+    cqt as cqt,
+    vqt as vqt,
 )
 
 from . import loss as loss

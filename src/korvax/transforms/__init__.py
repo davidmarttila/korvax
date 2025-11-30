@@ -1,3 +1,8 @@
+from ._cqt import (
+    cqt as cqt,
+    vqt as vqt,
+)
+
 from .fourier import (
     stft as stft,
     istft as istft,
