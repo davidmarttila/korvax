@@ -1,6 +1,6 @@
 [project]
 name = "korvax"
-version = "0.3.0"
+version = "0.3.1"
 description = "JAX utilities for Audio DSP and ML"
 urls = { "Homepage" = "https://korvax.readthedocs.io/", "Documentation" = "https://korvax.readthedocs.io/", "Repository" = "https://github.com/davidmarttila/korvax" }
 readme = "README.md"
@@ -8,7 +8,13 @@ license = "MIT"
 license-files = ["LICENSE", "LICENSE-3RD-PARTY"]
 authors = [{ name = "David Marttila", email = "david.suedholt@gmail.com" }]
 requires-python = ">=3.11"
-dependencies = ["jax>=0.6.2", "jaxtyping>=0.3.3"]
+dependencies = [
+    "jax>=0.6.2; python_version < '3.15'",
+    "jax>=0.12.0; python_version >= '3.15'",
+    "jaxtyping>=0.3.3",
+    "numpy",
+    "scipy",
+]
 
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -18,6 +24,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
 ]
 
 [project.optional-dependencies]
@@ -26,12 +33,17 @@ cuda13 = ["jax[cuda13] ; sys_platform == 'linux'"]
 
 
 [build-system]
-# fix jax version, 0.8.1 builds FFI functions with api version 0.2
-requires = ["scikit-build-core", "nanobind", "jax==0.8.0"]
+# Use older FFI headers where the runtime can still be JAX 0.6.2.
+requires = [
+    "scikit-build-core>=0.11.6",
+    "nanobind>=3.0.1",
+    "jax==0.8.0; python_version < '3.15'",
+    "jax==0.12.0; python_version >= '3.15'",
+]
 build-backend = "scikit_build_core.build"
 
 [tool.scikit-build]
-build-dir = "build/"
+build-dir = "build/{wheel_tag}"
 # editable.rebuild = true
 cmake.args = ["-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"]
 sdist.exclude = [".github", "tests", "docs", "scripts"]
@@ -86,3 +98,5 @@ typeCheckingMode = "standard"
 
 [tool.cibuildwheel]
 build-frontend = "build[uv]"
+build = "cp3{11,12,13,14,15}-* cp3{14,15}t-*"
+test-command = "python {project}/tests/wheel_smoke.py"

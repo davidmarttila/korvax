@@ -67,7 +67,7 @@ ffi::Error allpole_impl(ffi::Buffer<ffi::F32> x,
         XLA_CHECK_ARG(a_ndim == 2 && a.dimensions()[0] == x_len - static_cast<int>(a.dimensions()[1]),
                       "Input buffer `a` must have shape [T, order] when input buffer `x` has shape [T + order].");
 
-        order = static_cast<int>(a.dimensions()[0]);
+        order = static_cast<int>(a.dimensions()[1]);
         samplewise_allpole<float>(x_len - order, order, a.typed_data(), out->typed_data());
         return ffi::Error::Success();
     }
